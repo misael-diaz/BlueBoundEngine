@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstdint>
 #include <cstring>
 #include <cerrno>
 #include <unistd.h>
@@ -61,11 +62,56 @@ int main(int argc, char *argv[])
 	int const width = attributes.width;
 	int const height = attributes.height;
 	int const depth = attributes.depth;
+	Visual *visual = attributes.visual;
+
+	uint64_t iters = 0;
+	uint64_t red_shift = 0;
+	uint64_t green_shift = 0;
+	uint64_t blue_shift = 0;
+	uint64_t const rgb_mask = 0xff;
+	while ((rgb_mask << red_shift) != visual->red_mask) {
+		red_shift += 8LU;
+		if (iters > 2) {
+			fprintf(stderr, "%s\n", "error: unexpected visual endianess");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		++iters;
+	}
+
+	iters = 0;
+	while ((rgb_mask << green_shift) != visual->green_mask) {
+		green_shift += 8LU;
+		if (iters > 2) {
+			fprintf(stderr, "%s\n", "error: unexpected visual endianess");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		++iters;
+	}
+
+	iters = 0;
+	while ((rgb_mask << blue_shift) != visual->blue_mask) {
+		blue_shift += 8LU;
+		if (iters > 2) {
+			fprintf(stderr, "%s\n", "error: unexpected visual endianess");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		++iters;
+	}
+
 	fprintf(stdout, "x: %d\n", x);
 	fprintf(stdout, "y: %d\n", y);
 	fprintf(stdout, "width: %d\n", width);
 	fprintf(stdout, "height: %d\n", height);
 	fprintf(stdout, "depth: %d\n", depth);
+	fprintf(stdout, "red-mask: %ld\n", visual->red_mask);
+	fprintf(stdout, "green-mask: %ld\n", visual->green_mask);
+	fprintf(stdout, "blue-mask: %ld\n", visual->blue_mask);
+	fprintf(stdout, "red-shift: %ld\n", red_shift);
+	fprintf(stdout, "green-shift: %ld\n", green_shift);
+	fprintf(stdout, "blue-shift: %ld\n", blue_shift);
 
 	// TODO: get the current frame of the game at a fixed framerate
 
