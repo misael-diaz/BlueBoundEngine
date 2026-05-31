@@ -102,8 +102,6 @@ int main(int argc, char *argv[])
 		++iters;
 	}
 
-//	fprintf(stdout, "x: %d\n", x);
-//	fprintf(stdout, "y: %d\n", y);
 	fprintf(stdout, "width: %d\n", width);
 	fprintf(stdout, "height: %d\n", height);
 	fprintf(stdout, "depth: %d\n", depth);
@@ -153,7 +151,7 @@ int main(int argc, char *argv[])
 	}
 
 	// initializes the partition array for the clustering algorithm
-	uint32_t *part = (uint32_t*) vpart;
+	int32_t *part = (int32_t*) vpart;
 	memset(part, 0xff, bytes);
 	for (int y = 0; y != height; ++y) {
 		uint32_t *frame = (uint32_t*) data;
@@ -163,12 +161,93 @@ int main(int argc, char *argv[])
 			uint64_t g = ((visual->green_mask & rgb) >> green_shift);
 			uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
 			// shows coordinates and pixel values that probably belong to sonic
-			if ((r == 0x00) && (g < 0x80) && (b >= 0x80)) {
-				fprintf(stdout, "x: %d y: %d red: %lx green: %lx blue: %lx\n", x, y, r, g, b);
+			if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+				if (y > 0) {
+					uint32_t rgb = ((uint32_t*)(data - pitch))[x];
+					uint64_t r = ((visual->red_mask & rgb) >> red_shift);
+					uint64_t g = ((visual->green_mask & rgb) >> green_shift);
+					uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
+					if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+						int32_t id = ((y - 1) * height + x);
+						if (*(part + id) < 0) {
+							*(part + y * height + x) = id;
+							*(part + id) -= 1;
+						}
+						else {
+							int32_t root = *(part + id);
+							if (*(part + root) >= 0) {
+								fprintf(stderr, "%s\n", "error: clustering logic");
+								XCloseDisplay(display);
+								_exit(1);
+							}
+							*(part + y * height + x) = root;
+							*(part + root) -= 1;
+						}
+					}
+					else if (x > 0) {
+						uint32_t rgb = frame[x - 1];
+						uint64_t r = ((visual->red_mask & rgb) >> red_shift);
+						uint64_t g = ((visual->green_mask & rgb) >> green_shift);
+						uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
+						if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+							int32_t id = (y * height + (x - 1));
+							if (*(part + id) < 0) {
+								*(part + id) -= 1;
+								*(part + y * height + x) = id;
+							}
+							else {
+								int32_t root = *(part + id);
+								if (*(part + root) >= 0) {
+									fprintf(stderr, "%s\n", "error: clustering logic");
+									XCloseDisplay(display);
+									_exit(1);
+								}
+								*(part + y * height + x) = root;
+								*(part + root) -= 1;
+							}
+						}
+					}
+				}
+				else if (x > 0) {
+					uint32_t rgb = frame[x - 1];
+					uint64_t r = ((visual->red_mask & rgb) >> red_shift);
+					uint64_t g = ((visual->green_mask & rgb) >> green_shift);
+					uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
+					if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+						int32_t id = (y * height + (x - 1));
+						if (*(part + id) < 0) {
+							*(part + id) -= 1;
+							*(part + y * height + x) = id;
+						}
+						else {
+							int32_t root = *(part + id);
+							if (*(part + root) >= 0) {
+								fprintf(stderr, "%s\n", "error: clustering logic");
+								XCloseDisplay(display);
+								_exit(1);
+							}
+							*(part + y * height + x) = root;
+							*(part + root) -= 1;
+						}
+					}
+				}
 			}
 		}
 		data += pitch;
 	}
+
+	// shows coordinates that probably belong to sonic
+	uint32_t clusters = 0;
+	for (int y = 0; y != height; ++y) {
+		for (int x = 0; x != width; ++x) {
+			int id = height * y + x;
+			if (part[id] < -1) {
+				fprintf(stdout, "count: %d x: %d y: %d\n", -part[id], x, y);
+				++clusters;
+			}
+		}
+	}
+	fprintf(stdout, "clusters: %d\n", clusters);
 
 	XCloseDisplay(display);
 	return 0;
