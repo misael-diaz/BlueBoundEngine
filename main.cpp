@@ -256,6 +256,46 @@ int main(int argc, char *argv[])
 				fprintf(stdout, "count: %d x: %d y: %d\n", -part[id], x, y);
 				++cluterno;
 			}
+
+		}
+	}
+
+	// links nodes of constant y-striped clusters
+	for (uint64_t i = 0; i != pixels; ++i) {
+		struct cluster *cluster = &clusters[i];
+		if (part[i] < -1) {
+			cluster->size = -(part[i]);
+			cluster->node = (i + (cluster->size - 1));
+		}
+		for (uint64_t j = 1; j != cluster->size; ++j) {
+			int id = ((i + 1) + (cluster->size - 1) - j);
+			struct cluster *child = &clusters[id];
+			child->node = (id - 1);
+			child->root = i;
+		}
+	}
+
+	// check the links of the constant y-striped clusters
+	for (uint64_t id = 0; id != pixels; ++id) {
+		struct cluster const * const cluster = &clusters[id];
+		if (cluster->size > 1) {
+			uint64_t count = 0;
+			struct cluster const * child = &clusters[cluster->node];
+			uint64_t const childno = (cluster->size - 1);
+			while (child->node != id) {
+				child = &clusters[child->node];
+				if (count >= childno) {
+					fprintf(stderr, "%s\n", "error: clustering");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				++count;
+			}
+			if (count != childno) {
+				fprintf(stderr, "%s\n", "error: cluster-list");
+				XCloseDisplay(display);
+				_exit(1);
+			}
 		}
 	}
 	fprintf(stdout, "cluterno: %d\n", cluterno);
