@@ -9,6 +9,16 @@
 
 typedef char unsigned byte_t;
 
+extern "C" struct cluster {
+	int64_t root;
+	int64_t node;
+	int64_t size;
+	int32_t x;
+	int32_t y;
+};
+
+static_assert(32 == sizeof(struct cluster));
+
 int main(int argc, char *argv[])
 {
 	// Complains if the user does not invoke the code with the window resource id
@@ -145,7 +155,14 @@ int main(int argc, char *argv[])
 
 	uint64_t const pagesz = rc;
 	uint64_t const mask_page = (pagesz - 1);
-	uint64_t const bytes_required = bytes_partition;
+	struct cluster clust = {};
+	struct cluster *clusp = &clust;
+	uint64_t const bytes_clusters = pixels * sizeof(*clusp);
+	uint64_t const bytes_required = (
+			bytes_partition +
+			bytes_clusters +
+			0
+	);
 	uint64_t const bytes_mmap = (((bytes_required + mask_page) & (~mask_page)) << 1);
 
 	errno = 0;
@@ -170,7 +187,21 @@ int main(int argc, char *argv[])
 
 	// initializes the partition array for the clustering algorithm
 	uint64_t const offset_partition = 0;
+	uint64_t const offset_clusters = bytes_partition;
 	int32_t *part = (int32_t*) (((byte_t*) base) + offset_partition);
+	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
+	for (int y = 0; y != height; ++y) {
+		for (int x = 0; x != width; ++x) {
+			int id = height * y + x;
+			struct cluster *cluster = &clusters[id];
+			cluster->root = id;
+			cluster->node = id;
+			cluster->size = 1;
+			cluster->x = x;
+			cluster->y = y;
+		}
+	}
+
 	memset(part, 0xff, bytes_partition);
 	for (int y = 0; y != height; ++y) {
 		uint32_t *frame = (uint32_t*) data;
@@ -255,8 +286,8 @@ int main(int argc, char *argv[])
 		data += pitch;
 	}
 
-	uint32_t clusters = 0;
-	// TODO: look back in both x and y to merge nearby clusters, you will have to
+	uint32_t cluterno = 0;
+	// TODO: look back in both x and y to merge nearby cluterno, you will have to
 	//       identify a suitable distance for merging by experimentation. Note that
 	//       by looking back you make sure that on merge you use the id of the
 	//       preceeding cluster (higher rank). If you get a single large cluster
@@ -269,11 +300,11 @@ int main(int argc, char *argv[])
 			if (part[id] < -1) {
 				// shows coordinates that probably belong to sonic
 				fprintf(stdout, "count: %d x: %d y: %d\n", -part[id], x, y);
-				++clusters;
+				++cluterno;
 			}
 		}
 	}
-	fprintf(stdout, "clusters: %d\n", clusters);
+	fprintf(stdout, "cluterno: %d\n", cluterno);
 
 	XCloseDisplay(display);
 	return 0;
