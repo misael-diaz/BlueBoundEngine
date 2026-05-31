@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "green-shift: %ld\n", green_shift);
 	fprintf(stdout, "blue-shift: %ld\n", blue_shift);
 
-	// TODO: get the current frame of the game at a fixed framerate
+	// TODO: bound sonic at a fixed framerate
 
 	// plane mask tells that we care about all the bits that define color RRGGBB
 	int const format = ZPixmap;
