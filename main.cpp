@@ -8,16 +8,19 @@
 #include <sys/mman.h>
 
 typedef char unsigned byte_t;
+typedef int64_t CID;
 
 extern "C" struct cluster {
-	uint64_t root;
-	uint64_t node;
-	uint64_t size;
-	int32_t x;
-	int32_t y;
+	int64_t root;
+	int64_t node;
+	int64_t size;
+	int64_t id;
+	int64_t x;
+	int64_t y;
+	int64_t _pad[2];
 };
 
-static_assert(32 == sizeof(struct cluster));
+static_assert(64 == sizeof(struct cluster));
 
 int main(int argc, char *argv[])
 {
@@ -77,12 +80,15 @@ int main(int argc, char *argv[])
 	int const depth = attributes.depth;
 	Visual *visual = attributes.visual;
 
-	uint64_t iters = 0;
-	uint64_t red_shift = 0;
-	uint64_t green_shift = 0;
-	uint64_t blue_shift = 0;
-	uint64_t const rgb_mask = 0xff;
-	while ((rgb_mask << red_shift) != visual->red_mask) {
+	int64_t iters = 0;
+	int64_t red_shift = 0;
+	int64_t green_shift = 0;
+	int64_t blue_shift = 0;
+	int64_t const rgb_mask = 0xff;
+	int64_t const red_mask = visual->red_mask;
+	int64_t const green_mask = visual->green_mask;
+	int64_t const blue_mask = visual->blue_mask;
+	while ((rgb_mask << red_shift) != red_mask) {
 		red_shift += 8LU;
 		if (iters > 2) {
 			fprintf(stderr, "%s\n", "error: unexpected visual endianess");
@@ -93,7 +99,7 @@ int main(int argc, char *argv[])
 	}
 
 	iters = 0;
-	while ((rgb_mask << green_shift) != visual->green_mask) {
+	while ((rgb_mask << green_shift) != green_mask) {
 		green_shift += 8LU;
 		if (iters > 2) {
 			fprintf(stderr, "%s\n", "error: unexpected visual endianess");
@@ -104,7 +110,7 @@ int main(int argc, char *argv[])
 	}
 
 	iters = 0;
-	while ((rgb_mask << blue_shift) != visual->blue_mask) {
+	while ((rgb_mask << blue_shift) != blue_mask) {
 		blue_shift += 8LU;
 		if (iters > 2) {
 			fprintf(stderr, "%s\n", "error: unexpected visual endianess");
@@ -128,14 +134,14 @@ int main(int argc, char *argv[])
 
 	// plane mask tells that we care about all the bits that define color RRGGBB
 	int const format = ZPixmap;
-	uint64_t const plane_mask = 0xffffff;
+	int64_t const plane_mask = 0xffffff;
 	XImage *img = XGetImage(display, window, 0, 0, width, height, plane_mask, format);
 
 	char *data = img->data;
-	uint64_t const pitch = img->bytes_per_line;
-	uint64_t const pixels = (width * height);
-	uint64_t const bytes_frame = (img->bits_per_pixel >> 3) * pixels;
-	uint64_t const bytes_partition = bytes_frame;
+	int64_t const pitch = img->bytes_per_line;
+	int64_t const pixels = (width * height);
+	int64_t const bytes_frame = (img->bits_per_pixel >> 3) * pixels;
+	int64_t const bytes_partition = bytes_frame;
 	// even for 24-bit depth visuals images are usually stored with 32-bit padding
 	if (32 != img->bits_per_pixel) {
 		fprintf(stderr, "%s\n", "error: unexpected pixel depth");
@@ -153,17 +159,19 @@ int main(int argc, char *argv[])
 		_exit(1);
 	}
 
-	uint64_t const pagesz = rc;
-	uint64_t const mask_page = (pagesz - 1);
+	int64_t const pagesz = rc;
+	int64_t const mask_page = (pagesz - 1);
 	struct cluster clust = {};
 	struct cluster *clusp = &clust;
-	uint64_t const bytes_clusters = pixels * sizeof(*clusp);
-	uint64_t const bytes_required = (
+	int64_t const bytes_cluster_list = pixels * sizeof(CID);
+	int64_t const bytes_clusters = pixels * sizeof(*clusp);
+	int64_t const bytes_required = (
 			bytes_partition +
 			bytes_clusters +
+			bytes_cluster_list +
 			0
 	);
-	uint64_t const bytes_mmap = (((bytes_required + mask_page) & (~mask_page)) << 1);
+	int64_t const bytes_mmap = (((bytes_required + mask_page) & (~mask_page)) << 1);
 
 	errno = 0;
 	void *base = mmap(NULL, bytes_mmap, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -186,8 +194,11 @@ int main(int argc, char *argv[])
 	}
 
 	// initializes the partition array for the clustering algorithm
-	uint64_t const offset_partition = 0;
-	uint64_t const offset_clusters = bytes_partition;
+	int64_t const offset_partition = 0;
+	int64_t const offset_clusters = ((bytes_partition + 0x3f) & ~0x3f);
+	int64_t const offset_cluster_list = (
+		((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
+	);
 	int32_t *part = (int32_t*) (((byte_t*) base) + offset_partition);
 	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
 	for (int y = 0; y != height; ++y) {
@@ -197,6 +208,7 @@ int main(int argc, char *argv[])
 			cluster->root = id;
 			cluster->node = id;
 			cluster->size = 1;
+			cluster->id = id;
 			cluster->x = x;
 			cluster->y = y;
 		}
@@ -204,19 +216,19 @@ int main(int argc, char *argv[])
 
 	memset(part, 0xff, bytes_partition);
 	for (int y = 0; y != height; ++y) {
-		uint32_t *frame = (uint32_t*) data;
+		int32_t *frame = (int32_t*) data;
 		for (int x = 0; x != width; ++x) {
-			uint32_t rgb = frame[x];
-			uint64_t r = ((visual->red_mask & rgb) >> red_shift);
-			uint64_t g = ((visual->green_mask & rgb) >> green_shift);
-			uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
+			int32_t rgb = frame[x];
+			int64_t r = ((visual->red_mask & rgb) >> red_shift);
+			int64_t g = ((visual->green_mask & rgb) >> green_shift);
+			int64_t b = ((visual->blue_mask & rgb) >> blue_shift);
 			// shows coordinates and pixel values that probably belong to sonic
 			if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
 				if (x > 0) {
-					uint32_t rgb = frame[x - 1];
-					uint64_t r = ((visual->red_mask & rgb) >> red_shift);
-					uint64_t g = ((visual->green_mask & rgb) >> green_shift);
-					uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
+					int32_t rgb = frame[x - 1];
+					int64_t r = ((visual->red_mask & rgb) >> red_shift);
+					int64_t g = ((visual->green_mask & rgb) >> green_shift);
+					int64_t b = ((visual->blue_mask & rgb) >> blue_shift);
 					if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
 						int32_t id = (y * width + (x - 1));
 						if (*(part + id) < 0) {
@@ -240,7 +252,7 @@ int main(int argc, char *argv[])
 		data += pitch;
 	}
 
-	uint32_t cluterno = 0;
+	int32_t cluterno = 0;
 	// TODO: look back in both x and y to merge nearby cluterno, you will have to
 	//       identify a suitable distance for merging by experimentation. Note that
 	//       by looking back you make sure that on merge you use the id of the
@@ -260,30 +272,46 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	int64_t clno = 0;
+	CID *cl = (typeof(cl)) (((byte_t*) base) + offset_cluster_list);
+	memset(cl, 0, bytes_cluster_list);
 	// links nodes of constant y-striped clusters
-	for (uint64_t i = 0; i != pixels; ++i) {
+	for (int64_t i = 0; i != pixels; ++i) {
 		struct cluster *cluster = &clusters[i];
 		if (part[i] < -1) {
 			cluster->size = -(part[i]);
-			cluster->node = (i + (cluster->size - 1));
-		}
-		for (uint64_t j = 1; j != cluster->size; ++j) {
-			int id = ((i + 1) + (cluster->size - 1) - j);
-			struct cluster *child = &clusters[id];
-			child->node = (id - 1);
-			child->root = i;
+			int64_t const childno = (cluster->size - 1);
+			cluster->node = (i + childno);
+			for (int64_t j = 0; j != childno; ++j) {
+				int id = ((i + 1) + (childno - 1) - j);
+				if (part[id] != ((int64_t) i)) {
+					fprintf(stderr, "%s\n", "error: part");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				struct cluster *child = &clusters[id];
+				child->node = (id - 1);
+				child->root = i;
+			}
+			cl[clno] = i;
+			++clno;
 		}
 	}
 
 	// check the links of the constant y-striped clusters
-	for (uint64_t id = 0; id != pixels; ++id) {
+	for (int64_t id = 0; id != pixels; ++id) {
 		struct cluster const * const cluster = &clusters[id];
 		if (cluster->size > 1) {
-			uint64_t count = 0;
+			int64_t count = 1;
 			struct cluster const * child = &clusters[cluster->node];
-			uint64_t const childno = (cluster->size - 1);
+			int64_t const childno = (cluster->size - 1);
 			while (child->node != id) {
 				child = &clusters[child->node];
+				if (child->y != cluster->y) {
+					fprintf(stderr, "%s\n", "error: striping");
+					XCloseDisplay(display);
+					_exit(1);
+				}
 				if (count >= childno) {
 					fprintf(stderr, "%s\n", "error: clustering");
 					XCloseDisplay(display);
@@ -299,6 +327,42 @@ int main(int argc, char *argv[])
 		}
 	}
 	fprintf(stdout, "cluterno: %d\n", cluterno);
+
+	// TODO: merge clusters on the same scanline first
+	// TODO: merge clusters in consecutive scanlines
+	// TODO: check alignments of clusters, cluster_list, etc. (expect 64-byte align)
+
+	if (clno > 2) {
+		// checks if we have clusters in consecutive scanlines
+		for (int64_t idx = 0; idx != (clno - 1); ++idx) {
+			int64_t const curr = cl[idx];
+			int64_t const next = cl[idx + 1];
+			if (clusters[curr].x == clusters[next].x) {
+				int conecutive_scanlines = 0;
+				for (int64_t i = 0; i != clusters[curr].size; ++i) {
+					int64_t const x1 = clusters[curr + i].x;
+					int64_t const y1 = clusters[curr + i].y;
+					for (int64_t j = 0; j != clusters[next].size; ++j) {
+						int64_t const x2 = clusters[next + i].x;
+						int64_t const y2 = clusters[next + i].y;
+						int64_t const d2 = (
+							(x2 - x1) * (x2 - x1) +
+							(y2 - y1) * (y2 - y1)
+						);
+
+						if (d2 == 1) {
+							conecutive_scanlines = 1;
+							break;
+						}
+					}
+					if (conecutive_scanlines) {
+						fprintf(stdout, "%s\n", "detected clusters in consecutive scanlines");
+						break;
+					}
+				}
+			}
+		}
+	}
 
 	XCloseDisplay(display);
 	return 0;
