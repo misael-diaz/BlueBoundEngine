@@ -7,6 +7,8 @@
 #include <X11/Xlib.h>
 #include <sys/mman.h>
 
+typedef char unsigned byte_t;
+
 int main(int argc, char *argv[])
 {
 	// Complains if the user does not invoke the code with the window resource id
@@ -122,7 +124,9 @@ int main(int argc, char *argv[])
 	char *data = img->data;
 	uint64_t const pitch = img->bytes_per_line;
 	uint64_t const pixels = (width * height);
-	uint64_t const bytes = (img->bits_per_pixel >> 3) * pixels;
+	uint64_t const bytes_frame = (img->bits_per_pixel >> 3) * pixels;
+	uint64_t const bytes_partition = bytes_frame;
+	uint64_t const bytes_mmap = bytes_partition;
 	// even for 24-bit depth visuals images are usually stored with 32-bit padding
 	if (32 != img->bits_per_pixel) {
 		fprintf(stderr, "%s\n", "error: unexpected pixel depth");
@@ -131,8 +135,8 @@ int main(int argc, char *argv[])
 	}
 
 	errno = 0;
-	void *vpart = mmap(NULL, bytes, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-	if (MAP_FAILED == vpart) {
+	void *base = mmap(NULL, bytes_mmap, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	if (MAP_FAILED == base) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
 		}
@@ -141,7 +145,7 @@ int main(int argc, char *argv[])
 	}
 
 	errno = 0;
-	int rc = madvise(vpart, bytes, MADV_WILLNEED);
+	int rc = madvise(base, bytes_mmap, MADV_WILLNEED);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -151,8 +155,9 @@ int main(int argc, char *argv[])
 	}
 
 	// initializes the partition array for the clustering algorithm
-	int32_t *part = (int32_t*) vpart;
-	memset(part, 0xff, bytes);
+	uint64_t const offset_partition = 0;
+	int32_t *part = (int32_t*) (((byte_t*) base) + offset_partition);
+	memset(part, 0xff, bytes_partition);
 	for (int y = 0; y != height; ++y) {
 		uint32_t *frame = (uint32_t*) data;
 		for (int x = 0; x != width; ++x) {
