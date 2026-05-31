@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
 	for (int y = 0; y != height; ++y) {
 		for (int x = 0; x != width; ++x) {
-			int id = height * y + x;
+			int id = width * y + x;
 			struct cluster *cluster = &clusters[id];
 			cluster->root = id;
 			cluster->node = id;
@@ -218,10 +218,10 @@ int main(int argc, char *argv[])
 					uint64_t g = ((visual->green_mask & rgb) >> green_shift);
 					uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
 					if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
-						int32_t id = (y * height + (x - 1));
+						int32_t id = (y * width + (x - 1));
 						if (*(part + id) < 0) {
 							*(part + id) -= 1;
-							*(part + y * height + x) = id;
+							*(part + y * width + x) = id;
 						}
 						else {
 							int32_t root = *(part + id);
@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
 								XCloseDisplay(display);
 								_exit(1);
 							}
-							*(part + y * height + x) = root;
+							*(part + y * width + x) = root;
 							*(part + root) -= 1;
 						}
 					}
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 	//       for example the sky on some levels.
 	for (int y = 0; y != height; ++y) {
 		for (int x = 0; x != width; ++x) {
-			int id = height * y + x;
+			int id = width * y + x;
 			if (part[id] < -1) {
 				// shows coordinates that probably belong to sonic
 				fprintf(stdout, "count: %d x: %d y: %d\n", -part[id], x, y);
