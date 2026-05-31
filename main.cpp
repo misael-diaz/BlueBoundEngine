@@ -126,13 +126,27 @@ int main(int argc, char *argv[])
 	uint64_t const pixels = (width * height);
 	uint64_t const bytes_frame = (img->bits_per_pixel >> 3) * pixels;
 	uint64_t const bytes_partition = bytes_frame;
-	uint64_t const bytes_mmap = bytes_partition;
 	// even for 24-bit depth visuals images are usually stored with 32-bit padding
 	if (32 != img->bits_per_pixel) {
 		fprintf(stderr, "%s\n", "error: unexpected pixel depth");
 		XCloseDisplay(display);
 		_exit(1);
 	}
+
+	errno = 0;
+	int64_t rc = sysconf(_SC_PAGESIZE);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	uint64_t const pagesz = rc;
+	uint64_t const mask_page = (pagesz - 1);
+	uint64_t const bytes_required = bytes_partition;
+	uint64_t const bytes_mmap = (((bytes_required + mask_page) & (~mask_page)) << 1);
 
 	errno = 0;
 	void *base = mmap(NULL, bytes_mmap, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -145,7 +159,7 @@ int main(int argc, char *argv[])
 	}
 
 	errno = 0;
-	int rc = madvise(base, bytes_mmap, MADV_WILLNEED);
+	rc = madvise(base, bytes_mmap, MADV_WILLNEED);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
