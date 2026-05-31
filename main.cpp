@@ -10,9 +10,9 @@
 typedef char unsigned byte_t;
 
 extern "C" struct cluster {
-	int64_t root;
-	int64_t node;
-	int64_t size;
+	uint64_t root;
+	uint64_t node;
+	uint64_t size;
 	int32_t x;
 	int32_t y;
 };
