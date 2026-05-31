@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <unistd.h>
 #include <X11/Xlib.h>
+#include <sys/mman.h>
 
 int main(int argc, char *argv[])
 {
@@ -122,6 +123,38 @@ int main(int argc, char *argv[])
 
 	char *data = img->data;
 	uint64_t const pitch = img->bytes_per_line;
+	uint64_t const pixels = (width * height);
+	uint64_t const bytes = (img->bits_per_pixel >> 3) * pixels;
+	// even for 24-bit depth visuals images are usually stored with 32-bit padding
+	if (32 != img->bits_per_pixel) {
+		fprintf(stderr, "%s\n", "error: unexpected pixel depth");
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	errno = 0;
+	void *vpart = mmap(NULL, bytes, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	if (MAP_FAILED == vpart) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	errno = 0;
+	int rc = madvise(vpart, bytes, MADV_WILLNEED);
+	if (-1 == rc) {
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	// initializes the partition array for the clustering algorithm
+	uint32_t *part = (uint32_t*) vpart;
+	memset(part, 0xff, bytes);
 	for (int y = 0; y != height; ++y) {
 		uint32_t *frame = (uint32_t*) data;
 		for (int x = 0; x != width; ++x) {
