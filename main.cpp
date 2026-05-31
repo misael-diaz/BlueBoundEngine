@@ -212,53 +212,7 @@ int main(int argc, char *argv[])
 			uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
 			// shows coordinates and pixel values that probably belong to sonic
 			if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
-				if (y > 0) {
-					uint32_t rgb = ((uint32_t*)(data - pitch))[x];
-					uint64_t r = ((visual->red_mask & rgb) >> red_shift);
-					uint64_t g = ((visual->green_mask & rgb) >> green_shift);
-					uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
-					if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
-						int32_t id = ((y - 1) * height + x);
-						if (*(part + id) < 0) {
-							*(part + y * height + x) = id;
-							*(part + id) -= 1;
-						}
-						else {
-							int32_t root = *(part + id);
-							if (*(part + root) >= 0) {
-								fprintf(stderr, "%s\n", "error: clustering logic");
-								XCloseDisplay(display);
-								_exit(1);
-							}
-							*(part + y * height + x) = root;
-							*(part + root) -= 1;
-						}
-					}
-					else if (x > 0) {
-						uint32_t rgb = frame[x - 1];
-						uint64_t r = ((visual->red_mask & rgb) >> red_shift);
-						uint64_t g = ((visual->green_mask & rgb) >> green_shift);
-						uint64_t b = ((visual->blue_mask & rgb) >> blue_shift);
-						if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
-							int32_t id = (y * height + (x - 1));
-							if (*(part + id) < 0) {
-								*(part + id) -= 1;
-								*(part + y * height + x) = id;
-							}
-							else {
-								int32_t root = *(part + id);
-								if (*(part + root) >= 0) {
-									fprintf(stderr, "%s\n", "error: clustering logic");
-									XCloseDisplay(display);
-									_exit(1);
-								}
-								*(part + y * height + x) = root;
-								*(part + root) -= 1;
-							}
-						}
-					}
-				}
-				else if (x > 0) {
+				if (x > 0) {
 					uint32_t rgb = frame[x - 1];
 					uint64_t r = ((visual->red_mask & rgb) >> red_shift);
 					uint64_t g = ((visual->green_mask & rgb) >> green_shift);
