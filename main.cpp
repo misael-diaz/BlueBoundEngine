@@ -236,12 +236,19 @@ int main(int argc, char *argv[])
 		data += pitch;
 	}
 
-	// shows coordinates that probably belong to sonic
 	uint32_t clusters = 0;
+	// TODO: look back in both x and y to merge nearby clusters, you will have to
+	//       identify a suitable distance for merging by experimentation. Note that
+	//       by looking back you make sure that on merge you use the id of the
+	//       preceeding cluster (higher rank). If you get a single large cluster
+	//       for your game you have nailed it for that case. For real sonic games
+	//       you will probably have to define a cluster size as well to discard
+	//       for example the sky on some levels.
 	for (int y = 0; y != height; ++y) {
 		for (int x = 0; x != width; ++x) {
 			int id = height * y + x;
 			if (part[id] < -1) {
+				// shows coordinates that probably belong to sonic
 				fprintf(stdout, "count: %d x: %d y: %d\n", -part[id], x, y);
 				++clusters;
 			}
