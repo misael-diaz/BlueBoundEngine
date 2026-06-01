@@ -386,6 +386,36 @@ int main(int argc, char *argv[])
 		_exit(0);
 	}
 
+	for (int64_t y = 0; y != height; ++y) {
+		for (int64_t x = 0; x != width; ++x) {
+			int64_t const id = width * y + x;
+			struct cluster *curr = &clusters[id];
+			if (BLUE_MASK_SONIC != curr->mask) {
+				continue;
+			}
+			else if (curr->root != curr->id) {
+				continue;
+			}
+			int64_t const beg = width * y + (x + 1);
+			int64_t const end = width * (y + 1);
+			for (int64_t i = beg; i != end; ++i) {
+				struct cluster *next = &clusters[i];
+				if (curr->y != next->y) {
+					fprintf(stderr, "%s\n", "error: ux count");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				if (BLUE_MASK_SONIC != next->mask) {
+					continue;
+				}
+				else if (curr->root != curr->id) {
+					continue;
+				}
+			}
+		}
+	}
+
+/*
 	// merges clusters lying on the same scanline
 	for (int64_t idx = 0; idx != (clno - 1); ++idx) {
 		int64_t const curr = cl[idx];
@@ -479,6 +509,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	fprintf(stdout, "merged-clusters-count: %ld\n", merges);
+*/
 
 	XCloseDisplay(display);
 	return 0;
