@@ -255,26 +255,6 @@ int main(int argc, char *argv[])
 		data += pitch;
 	}
 
-	int32_t cluterno = 0;
-	// TODO: look back in both x and y to merge nearby cluterno, you will have to
-	//       identify a suitable distance for merging by experimentation. Note that
-	//       by looking back you make sure that on merge you use the id of the
-	//       preceeding cluster (higher rank). If you get a single large cluster
-	//       for your game you have nailed it for that case. For real sonic games
-	//       you will probably have to define a cluster size as well to discard
-	//       for example the sky on some levels.
-	for (int y = 0; y != height; ++y) {
-		for (int x = 0; x != width; ++x) {
-			int id = width * y + x;
-			if (part[id] < -1) {
-				// shows coordinates that probably belong to sonic
-				fprintf(stdout, "count: %d x: %d y: %d\n", -part[id], x, y);
-				++cluterno;
-			}
-
-		}
-	}
-
 	int64_t clno = 0;
 	CID *cl = (typeof(cl)) (((byte_t*) base) + offset_cluster_list);
 	memset(cl, 0, bytes_cluster_list);
@@ -329,11 +309,10 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	fprintf(stdout, "cluterno: %d\n", cluterno);
 
-	// TODO: merge clusters in consecutive scanlines
 	// TODO: check alignments of clusters, cluster_list, etc. (expect 64-byte align)
 
+	int64_t merges = 0;
 	if (clno > 2) {
 		// merges clusters lying on the same scanline
 		for (int64_t idx = 0; idx != (clno - 1); ++idx) {
@@ -355,17 +334,66 @@ int main(int argc, char *argv[])
 							clusters[curr].next = clusters[next].id;
 							clusters[next].prev = clusters[curr].id;
 							merged = 1;
+							++merges;
 							break;
 						}
 					}
 					if (merged) {
-						fprintf(stdout, "merged: %ld and %ld\n", curr, next);
+						//fprintf(stdout, "merged clusters on same scanline: %ld and %ld\n", curr, next);
+						break;
+					}
+				}
+			}
+		}
+
+		// merges clusters lying on contiguous scanlines
+		for (int64_t idx = 0; idx != (clno - 1); ++idx) {
+			int64_t const curr = cl[idx];
+			int64_t const next = cl[idx + 1];
+			if (clusters[curr].x == clusters[next].x) {
+				int merged = 0;
+				for (int64_t i = 0; i != clusters[curr].size; ++i) {
+					int64_t const x1 = clusters[curr + i].x;
+					int64_t const y1 = clusters[curr + i].y;
+					for (int64_t j = 0; j != clusters[next].size; ++j) {
+						int64_t const x2 = clusters[next + i].x;
+						int64_t const y2 = clusters[next + i].y;
+						int64_t const d2 = (
+							(x2 - x1) * (x2 - x1) +
+							(y2 - y1) * (y2 - y1)
+						);
+
+						if (d2 == 1) {
+							int64_t iter = curr;
+							while (clusters[iter].next != clusters[iter].id) {
+								iter = clusters[iter].next;
+								if (clusters[iter].id == clusters[next].id) {
+									fprintf(stderr, "%s\n", "error: surprising would create closed-loop");
+									XCloseDisplay(display);
+									_exit(1);
+								}
+							}
+							if (clusters[iter].id >= clusters[next].id) {
+								fprintf(stderr, "%s\n", "error: surprising would merge into lower-ranking cluster or create a closed-loop");
+								XCloseDisplay(display);
+								_exit(1);
+							}
+							clusters[iter].next = clusters[next].id;
+							clusters[next].prev = clusters[iter].id;
+							merged = 1;
+							++merges;
+							break;
+						}
+					}
+					if (merged) {
+						//fprintf(stdout, "merged clusters on contiguous scanlines: %ld and %ld\n", curr, next);
 						break;
 					}
 				}
 			}
 		}
 	}
+	fprintf(stdout, "merged-clusters-count: %ld\n", merges);
 
 	XCloseDisplay(display);
 	return 0;
