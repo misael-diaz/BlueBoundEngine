@@ -23,6 +23,61 @@ extern "C" struct cluster {
 
 static_assert(64 == sizeof(struct cluster));
 
+// clusters (or groups) nodes that belong to Sonic
+extern "C" int Clustering(
+		int32_t * const part,
+		int32_t const * const frame,
+		int64_t const red_mask,
+		int64_t const green_mask,
+		int64_t const blue_mask,
+		int64_t const red_shift,
+		int64_t const green_shift,
+		int64_t const blue_shift,
+		int64_t const width,
+		int64_t const x,
+		int64_t const y
+) {
+	int32_t const rgb = frame[x];
+	int64_t const r = ((red_mask & rgb) >> red_shift);
+	int64_t const g = ((green_mask & rgb) >> green_shift);
+	int64_t const b = ((blue_mask & rgb) >> blue_shift);
+	if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+		if (x > 0) {
+			int32_t const rgb = frame[x - 1];
+			int64_t const r = ((red_mask & rgb) >> red_shift);
+			int64_t const g = ((green_mask & rgb) >> green_shift);
+			int64_t const b = ((blue_mask & rgb) >> blue_shift);
+			if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+				int32_t const id = (y * width + (x - 1));
+				if (*(part + id) < 0) {
+					*(part + id) -= 1;
+					*(part + y * width + x) = id;
+				}
+				else {
+					int32_t const root = *(part + id);
+					if (*(part + root) >= 0) {
+						goto err_cluster;
+					}
+					*(part + y * width + x) = root;
+					*(part + root) -= 1;
+				}
+			}
+		}
+	}
+
+	return 0;
+
+err_cluster:
+	{
+		// NOTE:
+		// If the partition value for a root node is positive that means that
+		// there is a logic error because root-nodes only store counts and
+		// these are negative values to differentiate them easily from node ids.
+		fprintf(stderr, "%s\n", "error: clustering logic");
+		return -1;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	// Complains if the user does not invoke the code with the window resource id
@@ -221,35 +276,22 @@ int main(int argc, char *argv[])
 	for (int y = 0; y != height; ++y) {
 		int32_t *frame = (int32_t*) data;
 		for (int x = 0; x != width; ++x) {
-			int32_t rgb = frame[x];
-			int64_t r = ((visual->red_mask & rgb) >> red_shift);
-			int64_t g = ((visual->green_mask & rgb) >> green_shift);
-			int64_t b = ((visual->blue_mask & rgb) >> blue_shift);
-			// shows coordinates and pixel values that probably belong to sonic
-			if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
-				if (x > 0) {
-					int32_t rgb = frame[x - 1];
-					int64_t r = ((visual->red_mask & rgb) >> red_shift);
-					int64_t g = ((visual->green_mask & rgb) >> green_shift);
-					int64_t b = ((visual->blue_mask & rgb) >> blue_shift);
-					if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
-						int32_t id = (y * width + (x - 1));
-						if (*(part + id) < 0) {
-							*(part + id) -= 1;
-							*(part + y * width + x) = id;
-						}
-						else {
-							int32_t root = *(part + id);
-							if (*(part + root) >= 0) {
-								fprintf(stderr, "%s\n", "error: clustering logic");
-								XCloseDisplay(display);
-								_exit(1);
-							}
-							*(part + y * width + x) = root;
-							*(part + root) -= 1;
-						}
-					}
-				}
+			rc = Clustering(
+					part,
+					frame,
+					red_mask,
+					green_mask,
+					blue_mask,
+					red_shift,
+					green_shift,
+					blue_shift,
+					width,
+					x,
+					y
+			);
+			if (-1 == rc) {
+				XCloseDisplay(display);
+				_exit(1);
 			}
 		}
 		data += pitch;
