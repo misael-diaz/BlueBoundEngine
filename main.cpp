@@ -11,7 +11,6 @@
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) (((r) == 0x00) && ((g) == 0x00) && (((b) >= 0x80) && ((b) < 0xf0)))
 
-
 typedef char unsigned byte_t;
 typedef int64_t CID;
 
@@ -320,7 +319,7 @@ int main(int argc, char *argv[])
 	// links nodes of constant y-striped clusters
 	for (int64_t i = 0; i != pixels; ++i) {
 		struct cluster *cluster = &clusters[i];
-		if (part[i] < -1) {
+		if ((BLUE_MASK_SONIC == cluster->mask) && (part[i] < 0)) {
 			cluster->size = -(part[i]);
 			int64_t const childno = (cluster->size - 1);
 			cluster->node = (i + childno);
@@ -332,6 +331,11 @@ int main(int argc, char *argv[])
 					_exit(1);
 				}
 				struct cluster *child = &clusters[id];
+				if (BLUE_MASK_SONIC != child->mask) {
+					fprintf(stderr, "%s\n", "error: unexpected partition error");
+					XCloseDisplay(display);
+					_exit(1);
+				}
 				child->node = (id - 1);
 				child->root = i;
 			}
@@ -343,29 +347,33 @@ int main(int argc, char *argv[])
 	// check the links of the constant y-striped clusters
 	for (int64_t id = 0; id != pixels; ++id) {
 		struct cluster const * const cluster = &clusters[id];
-		if (cluster->size > 1) {
-			int64_t count = 1;
-			struct cluster const * child = &clusters[cluster->node];
-			int64_t const childno = (cluster->size - 1);
-			while (child->node != id) {
-				child = &clusters[child->node];
-				if (child->y != cluster->y) {
-					fprintf(stderr, "%s\n", "error: striping");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				if (count >= childno) {
-					fprintf(stderr, "%s\n", "error: clustering");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				++count;
-			}
-			if (count != childno) {
-				fprintf(stderr, "%s\n", "error: cluster-list");
+		if (BLUE_MASK_SONIC != cluster->mask) {
+			continue;
+		}
+		else if (cluster->size == 1) {
+			continue;
+		}
+		int64_t count = 1;
+		struct cluster const * child = &clusters[cluster->node];
+		int64_t const childno = (cluster->size - 1);
+		while (child->node != id) {
+			child = &clusters[child->node];
+			if (child->y != cluster->y) {
+				fprintf(stderr, "%s\n", "error: striping");
 				XCloseDisplay(display);
 				_exit(1);
 			}
+			if (count >= childno) {
+				fprintf(stderr, "%s\n", "error: clustering");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+			++count;
+		}
+		if (count != childno) {
+			fprintf(stderr, "%s\n", "error: cluster-list");
+			XCloseDisplay(display);
+			_exit(1);
 		}
 	}
 
@@ -382,7 +390,13 @@ int main(int argc, char *argv[])
 	for (int64_t idx = 0; idx != (clno - 1); ++idx) {
 		int64_t const curr = cl[idx];
 		int64_t const next = cl[idx + 1];
-		if (clusters[curr].y != clusters[next].y) {
+		if (BLUE_MASK_SONIC != clusters[curr].mask) {
+			continue;
+		}
+		else if (BLUE_MASK_SONIC != clusters[next].mask) {
+			continue;
+		}
+		else if (clusters[curr].y != clusters[next].y) {
 			continue;
 		}
 		int merged = 0;
@@ -405,7 +419,7 @@ int main(int argc, char *argv[])
 				}
 			}
 			if (merged) {
-				//fprintf(stdout, "merged clusters on same scanline: %ld and %ld\n", curr, next);
+				fprintf(stdout, "merged clusters on same scanline: %ld and %ld\n", curr, next);
 				break;
 			}
 		}
@@ -415,7 +429,13 @@ int main(int argc, char *argv[])
 	for (int64_t idx = 0; idx != (clno - 1); ++idx) {
 		int64_t const curr = cl[idx];
 		int64_t const next = cl[idx + 1];
-		if (clusters[curr].x != clusters[next].x) {
+		if (BLUE_MASK_SONIC != clusters[curr].mask) {
+			continue;
+		}
+		else if (BLUE_MASK_SONIC != clusters[next].mask) {
+			continue;
+		}
+		else if (clusters[curr].x != clusters[next].x) {
 			continue;
 		}
 		int merged = 0;
