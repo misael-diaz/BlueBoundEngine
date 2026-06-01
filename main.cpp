@@ -13,11 +13,12 @@ typedef int64_t CID;
 extern "C" struct cluster {
 	int64_t root;
 	int64_t node;
+	int64_t prev;
+	int64_t next;
 	int64_t size;
 	int64_t id;
 	int64_t x;
 	int64_t y;
-	int64_t _pad[2];
 };
 
 static_assert(64 == sizeof(struct cluster));
@@ -207,6 +208,8 @@ int main(int argc, char *argv[])
 			struct cluster *cluster = &clusters[id];
 			cluster->root = id;
 			cluster->node = id;
+			cluster->prev = id;
+			cluster->next = id;
 			cluster->size = 1;
 			cluster->id = id;
 			cluster->x = x;
@@ -328,17 +331,16 @@ int main(int argc, char *argv[])
 	}
 	fprintf(stdout, "cluterno: %d\n", cluterno);
 
-	// TODO: merge clusters on the same scanline first
 	// TODO: merge clusters in consecutive scanlines
 	// TODO: check alignments of clusters, cluster_list, etc. (expect 64-byte align)
 
 	if (clno > 2) {
-		// checks if we have clusters in consecutive scanlines
+		// merges clusters lying on the same scanline
 		for (int64_t idx = 0; idx != (clno - 1); ++idx) {
 			int64_t const curr = cl[idx];
 			int64_t const next = cl[idx + 1];
-			if (clusters[curr].x == clusters[next].x) {
-				int conecutive_scanlines = 0;
+			if (clusters[curr].y == clusters[next].y) {
+				int merged = 0;
 				for (int64_t i = 0; i != clusters[curr].size; ++i) {
 					int64_t const x1 = clusters[curr + i].x;
 					int64_t const y1 = clusters[curr + i].y;
@@ -349,14 +351,15 @@ int main(int argc, char *argv[])
 							(x2 - x1) * (x2 - x1) +
 							(y2 - y1) * (y2 - y1)
 						);
-
-						if (d2 == 1) {
-							conecutive_scanlines = 1;
+						if (d2 <= 64) {
+							clusters[curr].next = clusters[next].id;
+							clusters[next].prev = clusters[curr].id;
+							merged = 1;
 							break;
 						}
 					}
-					if (conecutive_scanlines) {
-						fprintf(stdout, "%s\n", "detected clusters in consecutive scanlines");
+					if (merged) {
+						fprintf(stdout, "merged: %ld and %ld\n", curr, next);
 						break;
 					}
 				}
