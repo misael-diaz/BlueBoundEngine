@@ -131,9 +131,9 @@ int main(int argc, char *argv[])
 	XGetWindowAttributes(display, window, &attributes);
 //	int const x = attributes.x;
 //	int const y = attributes.y;
-	int const width = attributes.width;
-	int const height = attributes.height;
-	int const depth = attributes.depth;
+	int64_t const width = attributes.width;
+	int64_t const height = attributes.height;
+	int64_t const depth = attributes.depth;
 	Visual *visual = attributes.visual;
 
 	int64_t iters = 0;
@@ -176,9 +176,9 @@ int main(int argc, char *argv[])
 		++iters;
 	}
 
-	fprintf(stdout, "width: %d\n", width);
-	fprintf(stdout, "height: %d\n", height);
-	fprintf(stdout, "depth: %d\n", depth);
+	fprintf(stdout, "width: %ld\n", width);
+	fprintf(stdout, "height: %ld\n", height);
+	fprintf(stdout, "depth: %ld\n", depth);
 	fprintf(stdout, "red-mask: %ld\n", visual->red_mask);
 	fprintf(stdout, "green-mask: %ld\n", visual->green_mask);
 	fprintf(stdout, "blue-mask: %ld\n", visual->blue_mask);
@@ -257,9 +257,9 @@ int main(int argc, char *argv[])
 	);
 	int32_t *part = (int32_t*) (((byte_t*) base) + offset_partition);
 	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
-	for (int y = 0; y != height; ++y) {
-		for (int x = 0; x != width; ++x) {
-			int id = width * y + x;
+	for (int64_t y = 0; y != height; ++y) {
+		for (int64_t x = 0; x != width; ++x) {
+			int64_t id = width * y + x;
 			struct cluster *cluster = &clusters[id];
 			cluster->root = id;
 			cluster->node = id;
@@ -273,9 +273,9 @@ int main(int argc, char *argv[])
 	}
 
 	memset(part, 0xff, bytes_partition);
-	for (int y = 0; y != height; ++y) {
+	for (int64_t y = 0; y != height; ++y) {
 		int32_t *frame = (int32_t*) data;
-		for (int x = 0; x != width; ++x) {
+		for (int64_t x = 0; x != width; ++x) {
 			rc = Clustering(
 					part,
 					frame,
@@ -308,8 +308,8 @@ int main(int argc, char *argv[])
 			int64_t const childno = (cluster->size - 1);
 			cluster->node = (i + childno);
 			for (int64_t j = 0; j != childno; ++j) {
-				int id = ((i + 1) + (childno - 1) - j);
-				if (part[id] != ((int64_t) i)) {
+				int64_t id = ((i + 1) + (childno - 1) - j);
+				if (part[id] != i) {
 					fprintf(stderr, "%s\n", "error: part");
 					XCloseDisplay(display);
 					_exit(1);
