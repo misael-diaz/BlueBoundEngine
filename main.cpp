@@ -7,10 +7,16 @@
 #include <X11/Xlib.h>
 #include <sys/mman.h>
 
+#define BLUE_MASK_SONIC 1L
+// TODO: consider working with a packed RGB parameter instead
+#define Blue(r, g, b) (((r) == 0x00) && ((g) == 0x00) && (((b) >= 0x80) && ((b) < 0xf0)))
+
+
 typedef char unsigned byte_t;
 typedef int64_t CID;
 
 extern "C" struct cluster {
+	int64_t mask;
 	int64_t root;
 	int64_t node;
 	int64_t prev;
@@ -19,9 +25,10 @@ extern "C" struct cluster {
 	int64_t id;
 	int64_t x;
 	int64_t y;
+	int64_t _pad[7];
 };
 
-static_assert(64 == sizeof(struct cluster));
+static_assert(128 == sizeof(struct cluster));
 
 // clusters (or groups) nodes that belong to Sonic
 extern "C" int Clustering(
@@ -41,13 +48,13 @@ extern "C" int Clustering(
 	int64_t const r = ((red_mask & rgb) >> red_shift);
 	int64_t const g = ((green_mask & rgb) >> green_shift);
 	int64_t const b = ((blue_mask & rgb) >> blue_shift);
-	if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+	if (Blue(r, g, b)) {
 		if (x > 0) {
 			int32_t const rgb = frame[x - 1];
 			int64_t const r = ((red_mask & rgb) >> red_shift);
 			int64_t const g = ((green_mask & rgb) >> green_shift);
 			int64_t const b = ((blue_mask & rgb) >> blue_shift);
-			if ((r == 0x00) && (g == 0x00) && (b >= 0x80 && b < 0xf0)) {
+			if (Blue(r, g, b)) {
 				int32_t const id = (y * width + (x - 1));
 				if (*(part + id) < 0) {
 					*(part + id) -= 1;
@@ -257,10 +264,17 @@ int main(int argc, char *argv[])
 	);
 	int32_t *part = (int32_t*) (((byte_t*) base) + offset_partition);
 	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
+	data = img->data;
 	for (int64_t y = 0; y != height; ++y) {
+		int32_t *frame = (int32_t*) data;
 		for (int64_t x = 0; x != width; ++x) {
 			int64_t id = width * y + x;
 			struct cluster *cluster = &clusters[id];
+			int32_t const rgb = frame[x];
+			int64_t const r = ((red_mask & rgb) >> red_shift);
+			int64_t const g = ((green_mask & rgb) >> green_shift);
+			int64_t const b = ((blue_mask & rgb) >> blue_shift);
+			cluster->mask = ((Blue(r, g, b))? BLUE_MASK_SONIC : 0);
 			cluster->root = id;
 			cluster->node = id;
 			cluster->prev = id;
@@ -270,8 +284,10 @@ int main(int argc, char *argv[])
 			cluster->x = x;
 			cluster->y = y;
 		}
+		data += pitch;
 	}
 
+	data = img->data;
 	memset(part, 0xff, bytes_partition);
 	for (int64_t y = 0; y != height; ++y) {
 		int32_t *frame = (int32_t*) data;
