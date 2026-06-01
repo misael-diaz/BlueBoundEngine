@@ -265,6 +265,7 @@ int main(int argc, char *argv[])
 	int32_t *part = (int32_t*) (((byte_t*) base) + offset_partition);
 	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
 	data = img->data;
+	// PERF: don't mind doing multiple passes on the framebuffer while writing experimental code so bear it with me
 	for (int64_t y = 0; y != height; ++y) {
 		int32_t *frame = (int32_t*) data;
 		for (int64_t x = 0; x != width; ++x) {
