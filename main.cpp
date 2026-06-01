@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
 	int64_t const offset_cluster_list = (
 		((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
 	);
-	int32_t *part = (int32_t*) (((byte_t*) base) + offset_partition);
+	int32_t *part = (typeof(part)) (((byte_t*) base) + offset_partition);
 	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
 	data = img->data;
 	// PERF: don't mind doing multiple passes on the framebuffer while writing experimental code so bear it with me
