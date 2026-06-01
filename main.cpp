@@ -382,30 +382,31 @@ int main(int argc, char *argv[])
 	for (int64_t idx = 0; idx != (clno - 1); ++idx) {
 		int64_t const curr = cl[idx];
 		int64_t const next = cl[idx + 1];
-		if (clusters[curr].y == clusters[next].y) {
-			int merged = 0;
-			for (int64_t i = 0; i != clusters[curr].size; ++i) {
-				int64_t const x1 = clusters[curr + i].x;
-				int64_t const y1 = clusters[curr + i].y;
-				for (int64_t j = 0; j != clusters[next].size; ++j) {
-					int64_t const x2 = clusters[next + i].x;
-					int64_t const y2 = clusters[next + i].y;
-					int64_t const d2 = (
-						(x2 - x1) * (x2 - x1) +
-						(y2 - y1) * (y2 - y1)
-					);
-					if (d2 <= 64) {
-						clusters[curr].next = clusters[next].id;
-						clusters[next].prev = clusters[curr].id;
-						merged = 1;
-						++merges;
-						break;
-					}
-				}
-				if (merged) {
-					//fprintf(stdout, "merged clusters on same scanline: %ld and %ld\n", curr, next);
+		if (clusters[curr].y != clusters[next].y) {
+			continue;
+		}
+		int merged = 0;
+		for (int64_t i = 0; i != clusters[curr].size; ++i) {
+			int64_t const x1 = clusters[curr + i].x;
+			int64_t const y1 = clusters[curr + i].y;
+			for (int64_t j = 0; j != clusters[next].size; ++j) {
+				int64_t const x2 = clusters[next + i].x;
+				int64_t const y2 = clusters[next + i].y;
+				int64_t const d2 = (
+					(x2 - x1) * (x2 - x1) +
+					(y2 - y1) * (y2 - y1)
+				);
+				if (d2 <= 64) {
+					clusters[curr].next = clusters[next].id;
+					clusters[next].prev = clusters[curr].id;
+					merged = 1;
+					++merges;
 					break;
 				}
+			}
+			if (merged) {
+				//fprintf(stdout, "merged clusters on same scanline: %ld and %ld\n", curr, next);
+				break;
 			}
 		}
 	}
