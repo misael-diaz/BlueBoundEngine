@@ -7,9 +7,12 @@
 #include <X11/Xlib.h>
 #include <sys/mman.h>
 
+#define BLUE_DIST_MERGE 256L
 #define BLUE_MASK_SONIC 1L
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) (((r) == 0x00) && ((g) == 0x00) && (((b) >= 0x80) && ((b) < 0xf0)))
+#define Dist(x1, x2) (((x1) - (x2)) * ((x1) - (x2)))
+#define Merged(d) ((d) < BLUE_DIST_MERGE)
 
 typedef char unsigned byte_t;
 typedef int64_t CID;
@@ -339,6 +342,11 @@ int main(int argc, char *argv[])
 				child->node = (id - 1);
 				child->root = i;
 			}
+			if ((1 == cluster->size) && (cluster->node != cluster->id)) {
+				fprintf(stderr, "%s\n", "error: unexpected clustering error");
+				XCloseDisplay(display);
+				_exit(1);
+			}
 			cl[clno] = i;
 			++clno;
 		}
@@ -388,6 +396,7 @@ int main(int argc, char *argv[])
 
 	for (int64_t y = 0; y != height; ++y) {
 		for (int64_t x = 0; x != width; ++x) {
+			int quit = 0;
 			int64_t const id = width * y + x;
 			struct cluster *curr = &clusters[id];
 			if (BLUE_MASK_SONIC != curr->mask) {
@@ -396,24 +405,120 @@ int main(int argc, char *argv[])
 			else if (curr->root != curr->id) {
 				continue;
 			}
-			int64_t const beg = width * y + (x + 1);
+			int64_t const beg = 1 + curr->node;
 			int64_t const end = width * (y + 1);
-			for (int64_t i = beg; i != end; ++i) {
-				struct cluster *next = &clusters[i];
+			if (beg > end) {
+				fprintf(stderr, "%s\n", "error: ux out-of-bounds");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+			for (int64_t ii = beg; ii != end; ++ii) {
+				struct cluster *next = &clusters[ii];
+				// TODO: you can safely delete this later
 				if (curr->y != next->y) {
 					fprintf(stderr, "%s\n", "error: ux count");
 					XCloseDisplay(display);
 					_exit(1);
 				}
-				if (BLUE_MASK_SONIC != next->mask) {
+				else if (next->root == curr->id) {
+					// this loop is not meant for traversing the nodes of the current cluster
+					fprintf(stderr, "%s\n", "error: owned node");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				else if (BLUE_MASK_SONIC != next->mask) {
 					continue;
 				}
-				else if (curr->root != curr->id) {
-					continue;
+				else if (next->root != next->id) {
+					// we should never reach a node of a cluster that has the sonic mask SET because we merge that cluster right away if it is in range (and to do that we don't even have to look at the nodes); now if we are here that means that we kept looking when we should have stopped because A: as before we don't need to look at the nodes to know if the cluster can be merged and because B: if we were too far we should not have kept looking beyond the defined range and because C: if not because of A or B then we have a problem in the core clustering or partitioning algorithm
+					fprintf(stderr, "%s\n", "error: ux found node");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				else if (next->prev == curr->id) {
+					// again we should not be here again because the algorithm is expected to move to the next cluster to try a new merge not repeat its work
+					fprintf(stderr, "%s\n", "error: ux merge");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+
+				if (1 == curr->size) {
+					int64_t const x1 = curr->x;
+					int64_t const x2 = next->x;
+					int64_t const d2 = Dist(x1, x2);
+					if (Merged(d2)) {
+						next->prev = curr->id;
+						curr->next = next->id;
+						++merges;
+						break;
+					}
+					else {
+						quit = 1;
+						break;
+					}
+				}
+				else {
+					int64_t const last = curr->node;
+					struct cluster const * const child = &clusters[last];
+					int64_t const x1 = child->x;
+					int64_t const x2 = next->x;
+					int64_t const d2 = Dist(x1, x2);
+					if (Merged(d2)) {
+						next->prev = curr->id;
+						curr->next = next->id;
+						++merges;
+						break;
+					}
+					else {
+						quit = 1;
+						break;
+					}
+				}
+			}
+			if (quit) {
+				break;
+			}
+		}
+	}
+
+	// check join of clusters on the same scanline
+	for (int64_t i = 0; i != clno; ++i) {
+		int64_t const id = cl[i];
+		struct cluster const * const curr = &clusters[id];
+		if (BLUE_MASK_SONIC != curr->mask) {
+			fprintf(stderr, "%s\n", "error: cluster mask");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+
+		if (curr->next != curr->id) {
+			int64_t right = 0;
+			struct cluster const * next = &clusters[curr->next];
+			while (next->next != next->id) {
+				if (BLUE_MASK_SONIC != next->mask) {
+					fprintf(stderr, "%s\n", "error: mask");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				next = &clusters[next->next];
+				++right;
+			}
+			struct cluster const * prev = &clusters[next->prev];
+			if (prev->id != curr->id) {
+				int64_t left = 1;
+				while (prev->prev != curr->id) {
+					prev = &clusters[prev->prev];
+					++left;
+				}
+				if (left != right) {
+					fprintf(stderr, "%s\n", "error: traversal");
+					XCloseDisplay(display);
+					_exit(1);
 				}
 			}
 		}
 	}
+
 
 /*
 	// merges clusters lying on the same scanline
@@ -508,9 +613,10 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	fprintf(stdout, "merged-clusters-count: %ld\n", merges);
 */
 
+	fprintf(stdout, "clusters-count: %ld\n", clno);
+	fprintf(stdout, "merged-clusters-count: %ld\n", merges);
 	XCloseDisplay(display);
 	return 0;
 }
