@@ -492,6 +492,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (curr->next != curr->id) {
+			// TODO RENAME right, left -> count_forward, count_backward
 			int64_t right = 0;
 			struct cluster const * next = &clusters[curr->next];
 			while (next->next != next->id) {
@@ -514,6 +515,260 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "%s\n", "error: traversal");
 					XCloseDisplay(display);
 					_exit(1);
+				}
+			}
+		}
+	}
+
+	// TODO: assert that cluster-iterators point to actual clusters and only point to nodes on edge-cases
+	for (int64_t i = 0; i != (clno - 1); ++i) {
+		int64_t const ii = cl[i];
+		struct cluster *curr = &clusters[ii];
+		if (curr->root != curr->id) {
+			continue;
+		}
+		else if (BLUE_MASK_SONIC != curr->mask) {
+			continue;
+		}
+
+		int64_t const x_l = curr->x;
+		int64_t x_u = curr->x;
+		if (curr->next != curr->id) {
+			struct cluster const *iter = &clusters[curr->next];
+			struct cluster const *prev = &clusters[curr->next];
+			while ((iter->y == curr->y) && (iter->next != iter->id)) {
+				if (BLUE_MASK_SONIC != iter->mask) {
+					fprintf(stderr, "%s\n", "error: mask");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				prev = iter;
+				iter = &clusters[iter->next];
+			}
+
+			if (iter->y != curr->y) {
+				iter = prev;
+			}
+
+			if (iter->y != curr->y) {
+				fprintf(stderr, "%s\n", "error: not on the same scanline");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+
+			if (1 == iter->size) {
+				x_u = iter->x;
+			}
+			else {
+				iter = &clusters[iter->node];
+				x_u = iter->x;
+			}
+		}
+		else if (1 == curr->size) {
+			continue;
+		}
+		else if (curr->size > 1) {
+			// NOTE using the redundant logic expression for readability
+			struct cluster const * const iter = &clusters[curr->node];
+			if (BLUE_MASK_SONIC != iter->mask) {
+				fprintf(stderr, "%s\n", "error: mask");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+			x_u = iter->x;
+		}
+
+		if (x_l == x_u) {
+			fprintf(stderr, "%s\n", "error: traversal logic");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+
+		for (int64_t j = (i + 1); j != clno; ++j) {
+			int64_t const jj = cl[j];
+			struct cluster *next = &clusters[jj];
+			if (next->y == curr->y) {
+				continue;
+			}
+			else if ((next->y - curr->y) > 1) {
+				break;
+			}
+			else if (next->root != next->id) {
+				continue;
+			}
+			else if (BLUE_MASK_SONIC != next->mask) {
+				continue;
+			}
+			else if (next->prev == curr->id) {
+				fprintf(stderr, "%s\n", "error: merged already");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+
+			if ((next->x >= x_l) && (next->x <= x_u)) {
+				if (curr->next != curr->id) {
+					struct cluster *iter = &clusters[curr->next];
+					while (iter->next != iter->id) {
+						if (BLUE_MASK_SONIC != iter->mask) {
+							fprintf(stderr, "%s\n", "error: mask");
+							XCloseDisplay(display);
+							_exit(1);
+						}
+						iter = &clusters[iter->next];
+					}
+					iter->next = next->id;
+					next->prev = iter->id;
+					continue;
+				}
+				else {
+					curr->next = next->id;
+					next->prev = curr->id;
+					continue;
+				}
+			}
+			else if (next->size > 1) {
+				struct cluster const * const it = &clusters[next->node];
+				if ((it->x >= x_l) && (it->x <= x_u)) {
+					if (curr->next != curr->id) {
+						struct cluster *iter = &clusters[curr->next];
+						while (iter->next != iter->id) {
+							if (BLUE_MASK_SONIC != iter->mask) {
+								fprintf(stderr, "%s\n", "error: mask");
+								XCloseDisplay(display);
+								_exit(1);
+							}
+							iter = &clusters[iter->next];
+						}
+						iter->next = next->id;
+						next->prev = iter->id;
+						continue;
+					}
+					else {
+						curr->next = next->id;
+						next->prev = curr->id;
+						continue;
+					}
+				}
+			}
+			else if (next->next != next->id) {
+				struct cluster const *it = &clusters[next->next];
+				if (it->y != next->y) {
+					fprintf(stderr, "%s\n", "error: surprising not same scaline");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+
+				// checks the cluster coordinates
+				if ((it->x >= x_l) && (it->x <= x_u)) {
+					if (curr->next != curr->id) {
+						struct cluster *iter = &clusters[curr->next];
+						while (iter->next != iter->id) {
+							if (BLUE_MASK_SONIC != iter->mask) {
+								fprintf(stderr, "%s\n", "error: mask");
+								XCloseDisplay(display);
+								_exit(1);
+							}
+							iter = &clusters[iter->next];
+						}
+						iter->next = next->id;
+						next->prev = iter->id;
+						continue;
+					}
+					else {
+						curr->next = next->id;
+						next->prev = curr->id;
+						continue;
+					}
+				}
+				else if (it->size > 1) {
+					it = &clusters[it->node];
+					if ((it->x >= x_l) && (it->x <= x_u)) {
+						if (curr->next != curr->id) {
+							struct cluster *iter = &clusters[curr->next];
+							while (iter->next != iter->id) {
+								if (BLUE_MASK_SONIC != iter->mask) {
+									fprintf(stderr, "%s\n", "error: mask");
+									XCloseDisplay(display);
+									_exit(1);
+								}
+								iter = &clusters[iter->next];
+							}
+							iter->next = next->id;
+							next->prev = iter->id;
+							continue;
+						}
+						else {
+							curr->next = next->id;
+							next->prev = curr->id;
+							continue;
+						}
+					}
+				}
+				else if (it->next != it->id) {
+
+					while (it->next != it->id) {
+						if (BLUE_MASK_SONIC != it->mask) {
+							fprintf(stderr, "%s\n", "error: mask");
+							XCloseDisplay(display);
+							_exit(1);
+						}
+
+						it = &clusters[it->next];
+
+						if (it->y != next->y) {
+							fprintf(stderr, "%s\n", "error: surprising not same scaline");
+							XCloseDisplay(display);
+							_exit(1);
+						}
+
+						if ((it->x >= x_l) && (it->x <= x_u)) {
+							if (curr->next != curr->id) {
+								struct cluster *iter = &clusters[curr->next];
+								while (iter->next != iter->id) {
+									if (BLUE_MASK_SONIC != iter->mask) {
+										fprintf(stderr, "%s\n", "error: mask");
+										XCloseDisplay(display);
+										_exit(1);
+									}
+									iter = &clusters[iter->next];
+								}
+								iter->next = next->id;
+								next->prev = iter->id;
+								continue;
+							}
+							else {
+								curr->next = next->id;
+								next->prev = curr->id;
+								continue;
+							}
+						}
+					}
+
+					// NOTE the last hope, check the last node in the cluster
+					if (it->size > 1) {
+						it = &clusters[it->node];
+						if ((it->x >= x_l) && (it->x <= x_u)) {
+							if (curr->next != curr->id) {
+								struct cluster *iter = &clusters[curr->next];
+								while (iter->next != iter->id) {
+									if (BLUE_MASK_SONIC != iter->mask) {
+										fprintf(stderr, "%s\n", "error: mask");
+										XCloseDisplay(display);
+										_exit(1);
+									}
+									iter = &clusters[iter->next];
+								}
+								iter->next = next->id;
+								next->prev = iter->id;
+								continue;
+							}
+							else {
+								curr->next = next->id;
+								next->prev = curr->id;
+								continue;
+							}
+						}
+					}
 				}
 			}
 		}
