@@ -25,10 +25,11 @@ extern "C" struct cluster {
 	int64_t prev;
 	int64_t next;
 	int64_t size;
+	int64_t super;
 	int64_t id;
 	int64_t x;
 	int64_t y;
-	int64_t _pad[7];
+	int64_t _pad[6];
 };
 
 static_assert(128 == sizeof(struct cluster));
