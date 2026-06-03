@@ -96,6 +96,7 @@ extern "C" void Merge(
 	while (iter->next != iter->id) {
 		if (BLUE_MASK_SONIC != iter->mask) {
 			fprintf(stderr, "%s\n", "error: mask");
+			// NOTE: not going to agonize about exiting without closing the display since the window resource ID is not owned by this client X11 applicationa anyways
 			//XCloseDisplay(display);
 			_exit(1);
 		}
@@ -357,6 +358,7 @@ int main(int argc, char *argv[])
 					XCloseDisplay(display);
 					_exit(1);
 				}
+				child->size = 0;
 				child->node = (id - 1);
 				child->root = i;
 			}
@@ -617,6 +619,7 @@ int main(int argc, char *argv[])
 			}
 			else if (next->root != next->id) {
 				// FIXME: by skipping the nodes (strictly looking at the clusters) the algorithm misses merging opportunities
+				// STATUS: for now going to explore as much as possible landing on the clusters rather than the nodes
 				continue;
 			}
 			else if (BLUE_MASK_SONIC != next->mask) {
