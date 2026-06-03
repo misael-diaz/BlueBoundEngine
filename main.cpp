@@ -8,7 +8,8 @@
 #include <sys/mman.h>
 
 #define BLUE_DIST_MERGE 256L
-#define BLUE_MASK_SONIC 1L
+#define BLUE_MASK_SONIC (1L << 0)
+#define BLUE_MASK_MERGE (1L << 1)
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) (((r) == 0x00) && ((g) == 0x00) && (((b) >= 0x80) && ((b) < 0xf0)))
 #define Dist(x1, x2) (((x1) - (x2)) * ((x1) - (x2)))
