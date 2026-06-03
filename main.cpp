@@ -393,6 +393,7 @@ int main(int argc, char *argv[])
 		XCloseDisplay(display);
 		_exit(0);
 	}
+	fprintf(stdout, "%s\n", "merging clusters");
 
 	for (int64_t y = 0; y != height; ++y) {
 		for (int64_t x = 0; x != width; ++x) {
@@ -774,6 +775,32 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+	}
+
+	int64_t nodes = 0;
+	for (int64_t i = 0; i != pixels; ++i) {
+		struct cluster const * const c = &clusters[i];
+		if (c->mask) {
+			++nodes;
+		}
+	}
+
+	fprintf(stdout, "nodes: %ld\n", nodes);
+
+	{
+		int64_t count = 0;
+		int64_t const id = cl[0];
+		struct cluster const * const c = &clusters[id];
+		count += c->size;
+		if (c->next != c->id) {
+			struct cluster const *iter = &clusters[c->next];
+			while (iter->next != iter->id) {
+				count += iter->size;
+				iter = &clusters[iter->next];
+			}
+			count += iter->size;
+		}
+		fprintf(stdout, "count: %ld\n", count);
 	}
 
 
