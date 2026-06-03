@@ -87,6 +87,24 @@ err_cluster:
 	}
 }
 
+extern "C" void Merge(
+		struct cluster * const curr,
+		struct cluster * const next,
+		struct cluster * const clusters
+) {
+	struct cluster *iter = &clusters[curr->next];
+	while (iter->next != iter->id) {
+		if (BLUE_MASK_SONIC != iter->mask) {
+			fprintf(stderr, "%s\n", "error: mask");
+			//XCloseDisplay(display);
+			_exit(1);
+		}
+		iter = &clusters[iter->next];
+	}
+	iter->next = next->id;
+	next->prev = iter->id;
+}
+
 int main(int argc, char *argv[])
 {
 	// Complains if the user does not invoke the code with the window resource id
@@ -605,22 +623,14 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			else if (next->prev == curr->id) {
+				// NOTE: taken by whom this might be a keypoint for
+				// detecting merges between super clusters
 				continue;
 			}
 
 			if ((next->x >= x_l) && (next->x <= x_u)) {
 				if (curr->next != curr->id) {
-					struct cluster *iter = &clusters[curr->next];
-					while (iter->next != iter->id) {
-						if (BLUE_MASK_SONIC != iter->mask) {
-							fprintf(stderr, "%s\n", "error: mask");
-							XCloseDisplay(display);
-							_exit(1);
-						}
-						iter = &clusters[iter->next];
-					}
-					iter->next = next->id;
-					next->prev = iter->id;
+					Merge(curr, next, clusters);
 					continue;
 				}
 				else {
@@ -633,17 +643,7 @@ int main(int argc, char *argv[])
 				struct cluster const * const it = &clusters[next->node];
 				if ((it->x >= x_l) && (it->x <= x_u)) {
 					if (curr->next != curr->id) {
-						struct cluster *iter = &clusters[curr->next];
-						while (iter->next != iter->id) {
-							if (BLUE_MASK_SONIC != iter->mask) {
-								fprintf(stderr, "%s\n", "error: mask");
-								XCloseDisplay(display);
-								_exit(1);
-							}
-							iter = &clusters[iter->next];
-						}
-						iter->next = next->id;
-						next->prev = iter->id;
+						Merge(curr, next, clusters);
 						continue;
 					}
 					else {
@@ -664,17 +664,7 @@ int main(int argc, char *argv[])
 				// checks the cluster coordinates
 				if ((it->x >= x_l) && (it->x <= x_u)) {
 					if (curr->next != curr->id) {
-						struct cluster *iter = &clusters[curr->next];
-						while (iter->next != iter->id) {
-							if (BLUE_MASK_SONIC != iter->mask) {
-								fprintf(stderr, "%s\n", "error: mask");
-								XCloseDisplay(display);
-								_exit(1);
-							}
-							iter = &clusters[iter->next];
-						}
-						iter->next = next->id;
-						next->prev = iter->id;
+						Merge(curr, next, clusters);
 						continue;
 					}
 					else {
@@ -687,17 +677,7 @@ int main(int argc, char *argv[])
 					it = &clusters[it->node];
 					if ((it->x >= x_l) && (it->x <= x_u)) {
 						if (curr->next != curr->id) {
-							struct cluster *iter = &clusters[curr->next];
-							while (iter->next != iter->id) {
-								if (BLUE_MASK_SONIC != iter->mask) {
-									fprintf(stderr, "%s\n", "error: mask");
-									XCloseDisplay(display);
-									_exit(1);
-								}
-								iter = &clusters[iter->next];
-							}
-							iter->next = next->id;
-							next->prev = iter->id;
+							Merge(curr, next, clusters);
 							continue;
 						}
 						else {
@@ -726,17 +706,7 @@ int main(int argc, char *argv[])
 
 						if ((it->x >= x_l) && (it->x <= x_u)) {
 							if (curr->next != curr->id) {
-								struct cluster *iter = &clusters[curr->next];
-								while (iter->next != iter->id) {
-									if (BLUE_MASK_SONIC != iter->mask) {
-										fprintf(stderr, "%s\n", "error: mask");
-										XCloseDisplay(display);
-										_exit(1);
-									}
-									iter = &clusters[iter->next];
-								}
-								iter->next = next->id;
-								next->prev = iter->id;
+								Merge(curr, next, clusters);
 								continue;
 							}
 							else {
@@ -752,17 +722,7 @@ int main(int argc, char *argv[])
 						it = &clusters[it->node];
 						if ((it->x >= x_l) && (it->x <= x_u)) {
 							if (curr->next != curr->id) {
-								struct cluster *iter = &clusters[curr->next];
-								while (iter->next != iter->id) {
-									if (BLUE_MASK_SONIC != iter->mask) {
-										fprintf(stderr, "%s\n", "error: mask");
-										XCloseDisplay(display);
-										_exit(1);
-									}
-									iter = &clusters[iter->next];
-								}
-								iter->next = next->id;
-								next->prev = iter->id;
+								Merge(curr, next, clusters);
 								continue;
 							}
 							else {
