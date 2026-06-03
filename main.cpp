@@ -378,7 +378,7 @@ int main(int argc, char *argv[])
 		if (BLUE_MASK_SONIC != cluster->mask) {
 			continue;
 		}
-		else if (cluster->size == 1) {
+		else if (cluster->size <= 1) {
 			continue;
 		}
 		int64_t count = 1;
@@ -611,7 +611,13 @@ int main(int argc, char *argv[])
 		for (int64_t j = (i + 1); j != clno; ++j) {
 			int64_t const jj = cl[j];
 			struct cluster *next = &clusters[jj];
-			if (next->y == curr->y) {
+			if (0 == next->size) {
+				// NOTE: this should never happen
+				fprintf(stderr, "%s\n", "surprising landing on node");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+			else if (next->y == curr->y) {
 				continue;
 			}
 			else if ((next->y - curr->y) > 1) {
