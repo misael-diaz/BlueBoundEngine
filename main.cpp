@@ -597,15 +597,14 @@ int main(int argc, char *argv[])
 				break;
 			}
 			else if (next->root != next->id) {
+				// FIXME: by skipping the nodes (strictly looking at the clusters) the algorithm misses merging opportunities
 				continue;
 			}
 			else if (BLUE_MASK_SONIC != next->mask) {
 				continue;
 			}
 			else if (next->prev == curr->id) {
-				fprintf(stderr, "%s\n", "error: merged already");
-				XCloseDisplay(display);
-				_exit(1);
+				continue;
 			}
 
 			if ((next->x >= x_l) && (next->x <= x_u)) {
