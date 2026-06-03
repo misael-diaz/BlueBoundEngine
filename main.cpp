@@ -533,7 +533,10 @@ int main(int argc, char *argv[])
 
 		int64_t const x_l = curr->x;
 		int64_t x_u = curr->x;
-		if (curr->next != curr->id) {
+		if (
+			(curr->next != curr->id) &&
+			(curr->y == clusters[curr->next].y)
+		   ) {
 			struct cluster const *iter = &clusters[curr->next];
 			struct cluster const *prev = &clusters[curr->next];
 			while ((iter->y == curr->y) && (iter->next != iter->id)) {
