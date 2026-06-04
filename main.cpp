@@ -106,6 +106,7 @@ extern "C" void Merge(
 	}
 	iter->next = next->id;
 	next->prev = iter->id;
+	next->super = curr->id;
 }
 
 int main(int argc, char *argv[])
@@ -303,6 +304,7 @@ int main(int argc, char *argv[])
 			cluster->node = id;
 			cluster->prev = id;
 			cluster->next = id;
+			cluster->super = 0;
 			cluster->size = 1;
 			cluster->id = id;
 			cluster->x = x;
@@ -631,12 +633,18 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			else if (BLUE_MASK_SONIC != next->mask) {
+				// FIXME: COMPLAIN INSTEAD OF CONTINUING
 				continue;
 			}
 			else if (next->prev == curr->id) {
 				// NOTE: taken by whom this might be a keypoint for
 				// detecting merges between super clusters
 				continue;
+			}
+			else if (next->super != curr->id) {
+				fprintf(stdout, "%s\n", "todo: requires interleaved merge code");
+				XCloseDisplay(display);
+				_exit(0);
 			}
 
 			if ((next->x >= x_l) && (next->x <= x_u)) {
@@ -647,6 +655,7 @@ int main(int argc, char *argv[])
 				else {
 					curr->next = next->id;
 					next->prev = curr->id;
+					next->super = curr->id;
 					continue;
 				}
 			}
@@ -660,6 +669,7 @@ int main(int argc, char *argv[])
 					else {
 						curr->next = next->id;
 						next->prev = curr->id;
+						next->super = curr->id;
 						continue;
 					}
 				}
@@ -681,6 +691,7 @@ int main(int argc, char *argv[])
 					else {
 						curr->next = next->id;
 						next->prev = curr->id;
+						next->super = curr->id;
 						continue;
 					}
 				}
@@ -694,6 +705,7 @@ int main(int argc, char *argv[])
 						else {
 							curr->next = next->id;
 							next->prev = curr->id;
+							next->super = curr->id;
 							continue;
 						}
 					}
@@ -723,6 +735,7 @@ int main(int argc, char *argv[])
 							else {
 								curr->next = next->id;
 								next->prev = curr->id;
+								next->super = curr->id;
 								continue;
 							}
 						}
@@ -739,6 +752,7 @@ int main(int argc, char *argv[])
 							else {
 								curr->next = next->id;
 								next->prev = curr->id;
+								next->super = curr->id;
 								continue;
 							}
 						}
