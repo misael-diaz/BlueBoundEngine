@@ -633,8 +633,9 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			else if (BLUE_MASK_SONIC != next->mask) {
-				// FIXME: COMPLAIN INSTEAD OF CONTINUING
-				continue;
+				fprintf(stderr, "%s\n", "error: surprising mask");
+				XCloseDisplay(display);
+				_exit(1);
 			}
 			else if (next->prev == curr->id) {
 				// NOTE: taken by whom this might be a keypoint for
