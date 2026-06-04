@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
 			cluster->node = id;
 			cluster->prev = id;
 			cluster->next = id;
-			cluster->super = 0;
+			cluster->super = -1;
 			cluster->size = 1;
 			cluster->id = id;
 			cluster->x = x;
