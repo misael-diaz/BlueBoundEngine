@@ -252,6 +252,11 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
+	else if (prev_super->y != merge->y) {
+		fprintf(stderr, "%s\n", "error: surprising implementation error");
+		// XCloseDisplay(display);
+		_exit(1);
+	}
 
 	// merges clusters along the first scanline where they both lie on
 	int64_t last_super_id = -1;
@@ -293,7 +298,7 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
-	else if (prev_merge->y > leaf_super->y) {
+	else if (prev_merge->y != leaf_super->y) {
 		fprintf(stderr, "%s\n", "error: surprising impl error");
 		// XCloseDisplay(display);
 		_exit(1);
@@ -359,6 +364,7 @@ extern "C" void MergeSuperClusters(
 				}
 			}
 			else {
+				// NOTE: the following condition should not happen
 				if (prev_merge->y == merge->y) {
 					fprintf(stderr, "%s\n", "error: impl");
 					// XCloseDisplay(display);
