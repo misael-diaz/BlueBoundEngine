@@ -1014,7 +1014,7 @@ int main(int argc, char *argv[])
 			else if (next->prev == curr->id) {
 				continue;
 			}
-			else if (next->super != super) {
+			else if ((next->super != -1) && (next->super != super)) {
 				MergeSuperClusters(curr, next, clusters, super, x_l, x_u);
 				continue;
 			}
