@@ -117,7 +117,7 @@ extern "C" void MergeSuperClusters(
 		struct cluster * const clusters,
 		int64_t const superid,
 		int64_t const x_l,
-		int64_t const x_u 
+		int64_t const x_u
 ) {
 	// TODO: check the maskbits
 	if (-1 == superid) {
@@ -265,7 +265,7 @@ extern "C" void MergeSuperClusters(
 
 	// FIXME: merge is connected to something else and that's `pr` so you
 	// need to conditionally determine this with (merge->prev == merge->id)
-	
+
 	// creates first link (links end of super cluster with beginning of the other one)
 	prev_super->next = merge->id;
 	merge->prev = prev_super->id;
