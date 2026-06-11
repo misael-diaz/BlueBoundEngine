@@ -476,36 +476,6 @@ extern "C" void MergeSuperClusters(
 	// check ids
 	// check that the super data member points to the new one
 	// check that the cluster count matches the original distributed count
-
-
-	// THE FOLLOWING CODE IS THE ORIGINAL IDEA
-	if (super->prev != super->id) {
-		fprintf(stderr, "%s\n", "error: expected a super cluster");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	// TODO: get the super cluster of the current cluster, curr could be the super cluster but in general you will have to iterate backward to find it
-
-	struct cluster *iter = &clusters[curr->id];
-	if (iter != curr) {
-		fprintf(stderr, "%s\n", "error: surprising cluster id error");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	while (iter->prev != iter->id) {
-		iter = &clusters[iter->prev];
-	}
-
-	// NOTE: sets the id of the super cluster accordingly
-	// TODO: you have to write the interleaved merge code
-	struct cluster * const s = iter;
-	if (super->id > s->id) {
-		s->super = super->id;
-
-	}
-	else {
-		super->super = s->id;
-	}
 }
 
 int main(int argc, char *argv[])
