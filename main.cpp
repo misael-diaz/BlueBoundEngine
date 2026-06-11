@@ -380,9 +380,97 @@ extern "C" void MergeSuperClusters(
 		}
 	}
 
-	// TODO updates for the next iteration
-	//
-	// TODO write the loop for all the other merges, the first iteration has concluded
+	// updates for the next iteration
+	super = leaf_super;
+	leaf_merge = merge;
+
+	while (1) {
+		while (super->id < leaf_merge->id) {
+			if (super->next == super->id) {
+				break;
+			}
+			prev_super = &clusters[prev_super->next];
+			super = &clusters[super->next];
+		}
+
+		if (super->next == super->id) {
+			if (super->id < leaf_merge->id) {
+				super->next = leaf_merge->id;
+				leaf_merge->prev = super->id;
+				merge = leaf_merge;
+				while (merge->next != merge->id) {
+					merge->super = id_super;
+					merge = &clusters[merge->next];
+				}
+				break;
+			}
+
+			prev_super->next = leaf_merge->id;
+			leaf_merge->prev = prev_super->id;
+			merge = leaf_merge;
+			while (merge->id < super->id) {
+				merge->super = id_super;
+				if (merge->next == merge->id) {
+					break;
+				}
+				prev_merge = &clusters[prev_merge->next];
+				merge = &clusters[merge->next];
+			}
+
+			if (merge->next == merge->id) {
+				if (merge->id < super->id) {
+					merge->next = super->id;
+					super->prev = merge->id;
+					break;
+				}
+				prev_merge->next = super->id;
+				super->prev = prev_merge->id;
+				super->next = merge->id;
+				merge->prev = super->id;
+				break;
+			}
+
+			super->next = merge->id;
+			merge->prev = super->id;
+			while (merge->next != merge->id) {
+				merge->super = id_super;
+				merge = &clusters[merge->next];
+			}
+			break;
+		}
+
+		leaf_super = super;
+
+		prev_super->next = leaf_merge->id;
+		leaf_merge->prev = prev_super->id;
+
+		merge = leaf_merge;
+		while (merge->id < super->id) {
+			merge->super = id_super;
+			if (merge->next == merge->id) {
+				break;
+			}
+			prev_merge = &clusters[prev_merge->next];
+			merge = &clusters[merge->next];
+		}
+
+		if (merge->next == merge->id) {
+			if (merge->id < super->id) {
+				merge->next = super->id;
+				super->prev = merge->id;
+				break;
+			}
+			prev_merge->next = super->id;
+			super->prev = prev_merge->id;
+			super->next = merge->id;
+			merge->prev = super->id;
+			break;
+		}
+
+		// updates for the next iteration
+		leaf_merge = merge;
+		super = leaf_super;
+	}
 
 	// TODO:
 	// check ids
