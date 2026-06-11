@@ -259,14 +259,8 @@ extern "C" void MergeSuperClusters(
 	}
 
 	// merges clusters along the first scanline where they both lie on
-	int64_t last_super_id = -1;
-	int64_t leaf_super_id = -1;
-	int64_t last_merge_id = -1;
-	int64_t leaf_merge_id = -1;
 
 	struct cluster *leaf_super = super;
-	leaf_super_id = leaf_super->id;
-	last_super_id = prev_super->id;
 
 	// FIXME: merge is connected to something else and that's `pr` so you
 	// need to conditionally determine this with (merge->prev == merge->id)
@@ -279,6 +273,7 @@ extern "C" void MergeSuperClusters(
 	leaf_super->prev = leaf_super->id;
 
 	struct cluster *prev_merge = &clusters[merge->id];
+	struct cluster *leaf_merge = &clusters[merge->id];
 	while (merge->id < leaf_super->id) {
 		merge->super = id_super;
 		if (merge->next == merge->id) {
@@ -981,7 +976,7 @@ int main(int argc, char *argv[])
 			_exit(1);
 		}
 
-		iter = &clusters[curr->id];
+		struct cluster *iter = &clusters[curr->id];
 		while (iter->prev != iter->id) {
 			iter = &clusters[iter->prev];
 		}
