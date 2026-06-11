@@ -317,7 +317,7 @@ extern "C" void MergeSuperClusters(
 				if (super->next == super->id) {
 					break;
 				}
-				prev_super = &clusters[super->id];
+				prev_super = &clusters[prev_super->next];
 				super = &clusters[super->next];
 			}
 
