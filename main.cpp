@@ -1036,6 +1036,7 @@ int main(int argc, char *argv[])
 				}
 			}
 			else if (next->size > 1) {
+				// FIXME: the surest way is to iterate over all the child nodes to check for the x-coord being in [x_l, x_u] instead of just checking the last one; yes it's faster to apply the intermediate value theorem here but it does not hurt to traverse all child nodes (again to double check)
 				struct cluster const * const it = &clusters[next->node];
 				if ((it->x >= x_l) && (it->x <= x_u)) {
 					if (curr->next != curr->id) {
