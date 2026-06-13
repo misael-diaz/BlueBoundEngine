@@ -1169,124 +1169,14 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			// FIXME: Needs refactoring but most importantly needs to take into account that now as we iterate we can move to other scanlines because of the merge of super clusters. Thus, any code that relies on clusters being on the same scanline will fail.
-			if ((next->x >= x_l) && (next->x <= x_u)) {
-				if (curr->next != curr->id) {
-					MergeClusters(curr, next, clusters, super);
-					continue;
-				}
-				else {
-					curr->next = next->id;
-					next->prev = curr->id;
-					// FIXME: super is not necessarily curr->id it
-					// needs to be the id of the super cluster which
-					// is characterized by having `prev` equal to its
-					// `id`
-					next->super = super;
-					continue;
-				}
-			}
-			else if (next->size > 1) {
-				// FIXME: the surest way is to iterate over all the child nodes to check for the x-coord being in [x_l, x_u] instead of just checking the last one; yes it's faster to apply the intermediate value theorem here but it does not hurt to traverse all child nodes (again to double check)
-				struct cluster const * const it = &clusters[next->node];
-				if ((it->x >= x_l) && (it->x <= x_u)) {
-					if (curr->next != curr->id) {
-						MergeClusters(curr, next, clusters, super);
-						continue;
-					}
-					else {
-						curr->next = next->id;
-						next->prev = curr->id;
-						next->super = super;
-						continue;
-					}
-				}
-			}
-			else if (next->next != next->id) {
-				struct cluster const *it = &clusters[next->next];
-				if (it->y != next->y) {
-					fprintf(stderr, "%s\n", "error: surprising not same scaline");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-
-				// checks the cluster coordinates
-				if ((it->x >= x_l) && (it->x <= x_u)) {
-					if (curr->next != curr->id) {
-						MergeClusters(curr, next, clusters, super);
-						continue;
-					}
-					else {
-						curr->next = next->id;
-						next->prev = curr->id;
-						next->super = super;
-						continue;
-					}
-				}
-				else if (it->size > 1) {
-					it = &clusters[it->node];
-					if ((it->x >= x_l) && (it->x <= x_u)) {
-						if (curr->next != curr->id) {
-							MergeClusters(curr, next, clusters, super);
-							continue;
-						}
-						else {
-							curr->next = next->id;
-							next->prev = curr->id;
-							next->super = super;
-							continue;
-						}
-					}
-				}
-				else if (it->next != it->id) {
-
-					while (it->next != it->id) {
-						if (BLUE_MASK_SONIC != it->mask) {
-							fprintf(stderr, "%s\n", "error: mask");
-							XCloseDisplay(display);
-							_exit(1);
-						}
-
-						it = &clusters[it->next];
-
-						if (it->y != next->y) {
-							fprintf(stderr, "%s\n", "error: surprising not same scaline");
-							XCloseDisplay(display);
-							_exit(1);
-						}
-
-						if ((it->x >= x_l) && (it->x <= x_u)) {
-							if (curr->next != curr->id) {
-								MergeClusters(curr, next, clusters, super);
-								continue;
-							}
-							else {
-								curr->next = next->id;
-								next->prev = curr->id;
-								next->super = super;
-								continue;
-							}
-						}
-					}
-
-					// NOTE the last hope, check the last node in the cluster
-					if (it->size > 1) {
-						it = &clusters[it->node];
-						if ((it->x >= x_l) && (it->x <= x_u)) {
-							if (curr->next != curr->id) {
-								MergeClusters(curr, next, clusters, super);
-								continue;
-							}
-							else {
-								curr->next = next->id;
-								next->prev = curr->id;
-								next->super = super;
-								continue;
-							}
-						}
-					}
-				}
-			}
+			CheckBounds(
+				curr,
+				next,
+				clusters,
+				super,
+				x_l,
+				x_u
+			);
 		}
 	}
 
