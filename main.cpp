@@ -132,8 +132,21 @@ extern "C" void CheckBounds(
 		}
 	}
 	else if (next->size > 1) {
-		struct cluster const * const iter = &clusters[next->node];
-		if ((iter->x >= x_l) && (iter->x <= x_u)) {
+		struct cluster const * const node = &clusters[next->node];
+		if ((node->x >= x_l) && (node->x <= x_u)) {
+			if (curr->next != curr->id) {
+				MergeClusters(curr, next, clusters, super);
+				return;
+			}
+			else {
+				curr->next = next->id;
+				next->prev = curr->id;
+				next->super = super;
+				return;
+			}
+		}
+		else if ((next->x < x_l) && (node->x > x_u)) {
+			// by continuity one of the nodes is in [x_l, x_u]
 			if (curr->next != curr->id) {
 				MergeClusters(curr, next, clusters, super);
 				return;
