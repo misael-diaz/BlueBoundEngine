@@ -111,6 +111,52 @@ extern "C" void MergeClusters(
 	next->super = super;
 }
 
+extern "C" void CheckBounds(
+	struct cluster * const curr,
+	struct cluster * const next,
+	struct cluster * const clusters,
+	int64_t const super,
+	int64_t const x_l,
+	int64_t const x_u
+) {
+	if ((next->x >= x_l) && (next->x <= x_u)) {
+		if (curr->next != curr->id) {
+			MergeClusters(curr, next, clusters, super);
+			return;
+		}
+		else {
+			curr->next = next->id;
+			next->prev = curr->id;
+			next->super = super;
+			return;
+		}
+	}
+	else if (next->size > 1) {
+		struct cluster const * const iter = &clusters[next->node];
+		if ((iter->x >= x_l) && (iter->x <= x_u)) {
+			if (curr->next != curr->id) {
+				MergeClusters(curr, next, clusters, super);
+				return;
+			}
+			else {
+				curr->next = next->id;
+				next->prev = curr->id;
+				next->super = super;
+				return;
+			}
+		}
+	}
+	else if (next->next != next->id) {
+		// TODO add the code to check the bounds along the scanline, this is the
+		// new code because we assumed at first that we would never leave the
+		// scaline by iterating but that's no longer the case after merging
+		// super-clusters
+		return;
+	}
+
+	return;
+}
+
 extern "C" void MergeSuperClusters(
 		struct cluster * const curr,
 		struct cluster * const next,
