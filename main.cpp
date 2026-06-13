@@ -122,12 +122,22 @@ extern "C" void CheckBounds(
 	if ((next->x >= x_l) && (next->x <= x_u)) {
 		if (curr->next != curr->id) {
 			MergeClusters(curr, next, clusters, super);
+			struct cluster *iter = &clusters[next->next];
+			while (iter->next != iter->id) {
+				iter->super = super;
+				iter = &clusters[iter->next];
+			}
 			return;
 		}
 		else {
 			curr->next = next->id;
 			next->prev = curr->id;
 			next->super = super;
+			struct cluster *iter = &clusters[next->next];
+			while (iter->next != iter->id) {
+				iter->super = super;
+				iter = &clusters[iter->next];
+			}
 			return;
 		}
 	}
@@ -136,35 +146,116 @@ extern "C" void CheckBounds(
 		if ((node->x >= x_l) && (node->x <= x_u)) {
 			if (curr->next != curr->id) {
 				MergeClusters(curr, next, clusters, super);
+				struct cluster *iter = &clusters[next->next];
+				while (iter->next != iter->id) {
+					iter->super = super;
+					iter = &clusters[iter->next];
+				}
 				return;
 			}
 			else {
 				curr->next = next->id;
 				next->prev = curr->id;
 				next->super = super;
+				struct cluster *iter = &clusters[next->next];
+				while (iter->next != iter->id) {
+					iter->super = super;
+					iter = &clusters[iter->next];
+				}
 				return;
 			}
 		}
 		else if ((next->x < x_l) && (node->x > x_u)) {
-			// by continuity one of the nodes is in [x_l, x_u]
+			// by continuity one of the nodes satisfies [x_l, x_u]
 			if (curr->next != curr->id) {
 				MergeClusters(curr, next, clusters, super);
+				struct cluster *iter = &clusters[next->next];
+				while (iter->next != iter->id) {
+					iter->super = super;
+					iter = &clusters[iter->next];
+				}
 				return;
 			}
 			else {
 				curr->next = next->id;
 				next->prev = curr->id;
 				next->super = super;
+				struct cluster *iter = &clusters[next->next];
+				while (iter->next != iter->id) {
+					iter->super = super;
+					iter = &clusters[iter->next];
+				}
 				return;
 			}
 		}
 	}
-	else if (next->next != next->id) {
-		// TODO add the code to check the bounds along the scanline, this is the
-		// new code because we assumed at first that we would never leave the
-		// scaline by iterating but that's no longer the case after merging
-		// super-clusters
+	else if (next->next == next->id) {
 		return;
+	}
+
+	int merged = 0;
+	struct cluster *iter = &clusters[next->next];
+	do {
+		if (iter->y != next->y) {
+			merged = 0;
+			break;
+		}
+
+		if ((iter->x >= x_l) && (iter->x <= x_u)) {
+			if (curr->next != curr->id) {
+				MergeClusters(curr, next, clusters, super);
+				merged = 1;
+				break;
+			}
+			else {
+				curr->next = next->id;
+				next->prev = curr->id;
+				next->super = super;
+				merged = 1;
+				break;
+			}
+		} else if (iter->size > 1) {
+			struct cluster const * const node = &clusters[next->node];
+			if ((node->x >= x_l) && (node->x <= x_u)) {
+				if (curr->next != curr->id) {
+					MergeClusters(curr, next, clusters, super);
+					merged = 1;
+					break;
+				}
+				else {
+					curr->next = next->id;
+					next->prev = curr->id;
+					next->super = super;
+					merged = 1;
+					break;
+				}
+			}
+			else if ((iter->x < x_l) && (node->x > x_u)) {
+				if (curr->next != curr->id) {
+					MergeClusters(curr, next, clusters, super);
+					merged = 1;
+					break;
+				}
+				else {
+					curr->next = next->id;
+					next->prev = curr->id;
+					next->super = super;
+					merged = 1;
+					break;
+				}
+			}
+		}
+		iter = &clusters[iter->next];
+	} while (iter->next != iter->id);
+
+	if (!merged) {
+		return;
+	}
+
+	iter = &clusters[next->next];
+	while (iter->next != iter->id) {
+		iter->super = super;
+		iter = &clusters[iter->next];
 	}
 
 	return;
