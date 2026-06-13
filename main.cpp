@@ -1019,6 +1019,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
+			// FIXME: Needs refactoring but most importantly needs to take into account that now as we iterate we can move to other scanlines because of the merge of super clusters. Thus, any code that relies on clusters being on the same scanline will fail.
 			if ((next->x >= x_l) && (next->x <= x_u)) {
 				if (curr->next != curr->id) {
 					MergeClusters(curr, next, clusters, super);
