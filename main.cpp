@@ -411,7 +411,7 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
-	else if (super->y <= merge->y) {
+	else if (super->y < merge->y) {
 		fprintf(stderr, "%s\n", "error: implementation");
 		// XCloseDisplay(display);
 		_exit(1);
@@ -427,11 +427,6 @@ extern "C" void MergeSuperClusters(
 		_exit(1);
 	}
 	else if (prev_super->id > merge->id) {
-		fprintf(stderr, "%s\n", "error: surprising implementation error");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (prev_super->y != merge->y) {
 		fprintf(stderr, "%s\n", "error: surprising implementation error");
 		// XCloseDisplay(display);
 		_exit(1);
