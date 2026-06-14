@@ -1154,6 +1154,11 @@ int main(int argc, char *argv[])
 			XCloseDisplay(display);
 			_exit(1);
 		}
+		else if (x_l >= x_u) {
+			fprintf(stderr, "%s\n", "error: serious implementation flaw");
+			XCloseDisplay(display);
+			_exit(1);
+		}
 
 		struct cluster *iter = &clusters[curr->id];
 		while (iter->prev != iter->id) {
