@@ -1140,13 +1140,13 @@ int main(int argc, char *argv[])
 		}
 		else if (curr->size > 1) {
 			// NOTE using the redundant logic expression for readability
-			struct cluster const * const iter = &clusters[curr->node];
-			if (BLUE_MASK_SONIC != iter->mask) {
+			struct cluster const * const node = &clusters[curr->node];
+			if (BLUE_MASK_SONIC != node->mask) {
 				fprintf(stderr, "%s\n", "error: mask");
 				XCloseDisplay(display);
 				_exit(1);
 			}
-			x_u = iter->x;
+			x_u = node->x;
 		}
 
 		if (x_l == x_u) {
