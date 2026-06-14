@@ -1093,10 +1093,14 @@ int main(int argc, char *argv[])
 		int64_t const ii = cl[i];
 		struct cluster *curr = &clusters[ii];
 		if (curr->root != curr->id) {
-			continue;
+			fprintf(stderr, "%s\n", "error: not a cluster");
+			XCloseDisplay(display);
+			_exit(1);
 		}
 		else if (BLUE_MASK_SONIC != curr->mask) {
-			continue;
+			fprintf(stderr, "%s\n", "error: mask");
+			XCloseDisplay(display);
+			_exit(1);
 		}
 
 		int64_t const x_l = curr->x;
@@ -1174,8 +1178,17 @@ int main(int argc, char *argv[])
 			int64_t const jj = cl[j];
 			struct cluster *next = &clusters[jj];
 			if (0 == next->size) {
-				// NOTE: this should never happen
 				fprintf(stderr, "%s\n", "surprising landing on node");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+			else if (next->root != next->id) {
+				fprintf(stderr, "%s\n", "error: not a cluster");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+			else if (BLUE_MASK_SONIC != next->mask) {
+				fprintf(stderr, "%s\n", "error: mask");
 				XCloseDisplay(display);
 				_exit(1);
 			}
