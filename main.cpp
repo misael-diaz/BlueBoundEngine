@@ -285,10 +285,39 @@ extern "C" void MergeSuperClusters(
 		//XCloseDisplay(display);
 		_exit(1);
 	}
-	else if ((next->x < x_l) || (next->x > x_u)) {
-		// FIXME: you have to check the nodes also before concluding anything
-		fprintf(stdout, "%s\n", "skipping not yet mergeable");
+	else if (next->x > x_u) {
 		return;
+	}
+	else if (next->x < x_l) {
+		int mergeable = 0;
+		struct cluster const *iter = &clusters[next->next];
+		do {
+			if (iter->y != next->y) {
+				break;
+			}
+
+			if (iter->x >= x_l) {
+				mergeable = 1;
+				break;
+			}
+			iter = &clusters[iter->next];
+		} while (iter->next != iter->id);
+
+		if (iter->next == iter->id) {
+			if ((iter->size > 1) && (iter->y == next->y)) {
+				struct cluster const *node = &clusters[iter->node];
+				if ((node->x >= x_l) && (node->x <= x_u)) {
+					mergeable = 1;
+				}
+				else if (node->x > x_u) {
+					mergeable = 1;
+				}
+			}
+		}
+
+		if (!mergeable) {
+			return;
+		}
 	}
 
 	int64_t id_super = -1;
