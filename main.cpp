@@ -123,10 +123,10 @@ extern "C" void CheckBounds(
 		if (curr->next != curr->id) {
 			MergeClusters(curr, next, clusters, super);
 			struct cluster *iter = &clusters[next->next];
-			while (iter->next != iter->id) {
+			do {
 				iter->super = super;
 				iter = &clusters[iter->next];
-			}
+			} while (iter->next != iter->id);
 			return;
 		}
 		else {
@@ -134,10 +134,10 @@ extern "C" void CheckBounds(
 			next->prev = curr->id;
 			next->super = super;
 			struct cluster *iter = &clusters[next->next];
-			while (iter->next != iter->id) {
+			do {
 				iter->super = super;
 				iter = &clusters[iter->next];
-			}
+			} while (iter->next != iter->id);
 			return;
 		}
 	}
@@ -147,10 +147,10 @@ extern "C" void CheckBounds(
 			if (curr->next != curr->id) {
 				MergeClusters(curr, next, clusters, super);
 				struct cluster *iter = &clusters[next->next];
-				while (iter->next != iter->id) {
+				do {
 					iter->super = super;
 					iter = &clusters[iter->next];
-				}
+				} while (iter->next != iter->id);
 				return;
 			}
 			else {
@@ -158,10 +158,10 @@ extern "C" void CheckBounds(
 				next->prev = curr->id;
 				next->super = super;
 				struct cluster *iter = &clusters[next->next];
-				while (iter->next != iter->id) {
+				do {
 					iter->super = super;
 					iter = &clusters[iter->next];
-				}
+				} while (iter->next != iter->id);
 				return;
 			}
 		}
@@ -170,10 +170,10 @@ extern "C" void CheckBounds(
 			if (curr->next != curr->id) {
 				MergeClusters(curr, next, clusters, super);
 				struct cluster *iter = &clusters[next->next];
-				while (iter->next != iter->id) {
+				do {
 					iter->super = super;
 					iter = &clusters[iter->next];
-				}
+				} while (iter->next != iter->id);
 				return;
 			}
 			else {
@@ -181,10 +181,10 @@ extern "C" void CheckBounds(
 				next->prev = curr->id;
 				next->super = super;
 				struct cluster *iter = &clusters[next->next];
-				while (iter->next != iter->id) {
+				do {
 					iter->super = super;
 					iter = &clusters[iter->next];
-				}
+				} while (iter->next != iter->id);
 				return;
 			}
 		}
@@ -253,10 +253,10 @@ extern "C" void CheckBounds(
 	}
 
 	iter = &clusters[next->next];
-	while (iter->next != iter->id) {
+	do {
 		iter->super = super;
 		iter = &clusters[iter->next];
-	}
+	} while (iter->next != iter->id);
 
 	return;
 }
