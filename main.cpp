@@ -388,7 +388,7 @@ extern "C" void MergeSuperClusters(
 	struct cluster *prev_super = &clusters[id_super];
 	struct cluster *super = &clusters[id_super];
 	struct cluster *merge = &clusters[id_merge];
-	while (super->id < merge->id) {
+	while (super->y <= merge->y) {
 		if (super->next == super->id) {
 			break;
 		}
@@ -411,7 +411,7 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
-	else if (super->y < merge->y) {
+	else if (super->y <= merge->y) {
 		fprintf(stderr, "%s\n", "error: implementation");
 		// XCloseDisplay(display);
 		_exit(1);
@@ -426,13 +426,19 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
-	else if (prev_super->id > merge->id) {
+	else if (prev_super->y != merge->y) {
 		fprintf(stderr, "%s\n", "error: surprising implementation error");
 		// XCloseDisplay(display);
 		_exit(1);
 	}
 
 	// merges clusters along the first scanline where they both lie on
+
+	// FIXME: all that you know is that `super` points to a leaf but you need to
+	//        determine the sense of merging. Both `prev_super` and `merge` are
+	//        on the same scanline but it's their ids that determine the order
+	//        if we are to merge while preserving the order by id that the clusters
+	//        already have.
 
 	struct cluster *leaf_super = super;
 
