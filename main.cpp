@@ -1195,7 +1195,7 @@ int main(int argc, char *argv[])
 				XCloseDisplay(display);
 				_exit(1);
 			}
-			else if (next->prev == curr->id) {
+			else if (next->super == super) {
 				continue;
 			}
 			else if ((next->super != -1) && (next->super != super)) {
