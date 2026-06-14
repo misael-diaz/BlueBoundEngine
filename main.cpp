@@ -111,7 +111,7 @@ extern "C" void MergeClusters(
 	next->super = super;
 }
 
-extern "C" void CheckBounds(
+extern "C" void CheckBoundsAndMerge(
 	struct cluster * const curr,
 	struct cluster * const next,
 	struct cluster * const clusters,
@@ -1203,7 +1203,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			CheckBounds(
+			CheckBoundsAndMerge(
 				curr,
 				next,
 				clusters,
