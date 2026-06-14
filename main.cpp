@@ -1160,12 +1160,12 @@ int main(int argc, char *argv[])
 			_exit(1);
 		}
 
+		// initially marks ordinary clusters into super-clusters
 		struct cluster *iter = &clusters[curr->id];
-		while (iter->prev != iter->id) {
-			iter = &clusters[iter->prev];
-		}
-
 		if (-1 == iter->super) {
+			while (iter->prev != iter->id) {
+				iter = &clusters[iter->prev];
+			}
 			iter->super = iter->id;
 		}
 
