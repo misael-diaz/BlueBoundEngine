@@ -441,19 +441,41 @@ extern "C" void MergeSuperClusters(
 	//        already have.
 
 	struct cluster *leaf_super = super;
+	struct cluster *leaf_merge = merge;
 
 	// FIXME: merge is connected to something else and that's `pr` so you
 	// need to conditionally determine this with (merge->prev == merge->id)
 
 	// creates first link (links end of super cluster with beginning of the other one)
-	prev_super->next = merge->id;
-	merge->prev = prev_super->id;
+	if (prev_super->id < merge->id) {
+		prev_super->next = merge->id;
+		merge->prev = prev_super->id;
+	} else {
+		while (leaf_merge->y == prev_super->y) {
+			if (leaf_merge->next == leaf_merge->id) {
+				break;
+			}
+			leaf_merge = &clusters[leaf_merge->next];
+		}
+
+		if (leaf_merge->next == leaf_merge->id) {
+			// TODO add code if the cluster to be merged ends here
+			return;
+		}
+
+		// TODO adds the code to merge the super-clusters
+		struct clusters * const prev = &clusters[prev_super->prev];
+		// FIXME: the assumption that just the previous cluster is the one that we should use to merge is wrong because what I am thinking as I am writing this is that it should preceed merge by scanline and clearly this is not what I am doing
+		prev->next = merge->id;
+		merge->prev = prev->id;
+		merge->next = prev_super->id;
+		prev_super->next = FIXME;
+	}
 
 	// break the link to make sure that we don't have more than one link pointing at the same node
 	leaf_super->prev = leaf_super->id;
 
 	struct cluster *prev_merge = &clusters[merge->id];
-	struct cluster *leaf_merge = &clusters[merge->id];
 	while (merge->id < leaf_super->id) {
 		merge->super = id_super;
 		if (merge->next == merge->id) {
