@@ -590,6 +590,150 @@ extern "C" void MergeSuperClusters(
 		}
 		else {
 			// TODO in this case the `right` has a preceeding scanline
+			struct cluster *prev_right = &clusters[right->prev];
+			prev_right->next = left->id;
+			left->prev = prev_right->id;
+
+			while (left->y == ref_y) {
+				left->super = id_super;
+				if (left->next == left->id) {
+					break;
+				}
+				left = &clusters[left->next];
+			}
+
+			if (left->next == left->id) {
+				if (left->y == ref_y) {
+					left->next = right->id;
+					right->prev = left->id;
+					while (right->next != right->id) {
+						right->super = id_super;
+						right = &clusters[right->next];
+					}
+					return;
+				}
+				else {
+					struct cluster *prev_left = &clusters[left->prev];
+					prev_left->next = right->id;
+					right->prev = prev_left->id;
+
+					// need to link to left which is on the next scanline
+					while (right->y == ref_y) {
+						right->super = id_super;
+						if (right->next == right->id) {
+							break;
+						}
+						right = &clusters[right->next];
+					}
+
+					if (right->next == right->id) {
+						if (right->y == ref_y) {
+							right->next = left->id;
+							left->prev = right->id;
+							return;
+						}
+						else {
+							prev_right = &clusters[right->prev];
+							prev_right->next = left->id;
+							left->prev = prev_right->id;
+
+							left->next = right->id;
+							right->prev = left->id;
+							return;
+						}
+					}
+					else {
+						prev_right = &clusters[right->prev];
+						prev_right->next = left->id;
+						left->prev = prev_right->id;
+
+						left->next = right->id;
+						right->prev = left->id;
+						while (right->next != right->id) {
+							right->super = id_super;
+							right= &clusters[right->next];
+						}
+						return;
+					}
+				}
+			}
+			else {
+				struct cluster *prev_left = &clusters[left->prev];
+				prev_left->next = right->id;
+				right->prev = prev_left->id;
+
+				while (right->y == ref_y) {
+					right->super = id_super;
+					if (right->next == right->id) {
+						break;
+					}
+					right = &clusters[right->next];
+				}
+
+				if (right->next == right->id) {
+					if (right->y == ref_y) {
+						right->next = left->id;
+						left->prev = right->id;
+						while (left->next != left->id) {
+							left->super = id_super;
+							left = &clusters[left->next];
+						}
+						return;
+					}
+					else {
+						prev_right = &clusters[right->prev];
+						prev_right->next = left->id;
+						left->prev = prev_right->id;
+
+						// we need to iterate on left while keeping ourselves on the same scanline to link to the last cluster on right
+
+						prev_left = left;
+						while (left->y == prev_left->y) {
+							if (left->next == left->id) {
+								break;
+							}
+							left = &clusters[left->next];
+						}
+
+						// then we have to update `super` data member of `left` until we reach the end
+						if (left->next == left->id) {
+							if (left->y == prev_left->y) {
+								left->next = right->id;
+								right->prev = left->id;
+								return;
+							}
+							else {
+								prev_left = &clusters[left->prev];
+								prev_left->next = right->id;
+								right->prev = prev_left->id;
+
+								right->next = left->id;
+								left->prev = right->id;
+								return;
+							}
+						}
+						else {
+							prev_left = &clusters[left->prev];
+							prev_left->next = right->id;
+							right->prev = prev_left->id;
+
+							right->next = left->id;
+							left->prev = right->id;
+							while (left->next != left->id) {
+								left->super = id_super;
+								left = &clusters[left->next];
+							}
+							return;
+						}
+					}
+				}
+				else {
+					// after linking we are ready for executing the merge in a loop
+					prev_right = &clusters[right->prev];
+					prev_right->next = left->id;
+					left->prev = prev_right->id;
+				}
+			}
 		}
 	}
 	else {
