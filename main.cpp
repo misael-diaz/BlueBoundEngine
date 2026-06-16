@@ -738,8 +738,10 @@ extern "C" void MergeSuperClusters(
 	}
 	else {
 		if (right->prev == right->id) {
+			// NOTE: we can confidently skip to the merge loop
 		}
 		else {
+			// TODO: we have work to do here before we can move to the merge loop
 		}
 	}
 
