@@ -433,6 +433,7 @@ extern "C" void MergeSuperClusters(
 		_exit(1);
 	}
 
+	int64_t ref_y = super->y;
 	struct cluster *left = super;
 	struct cluster *right = merge;
 	if (super->id < merge->id) {
@@ -451,7 +452,7 @@ extern "C" void MergeSuperClusters(
 	if (left->prev == left->id) {
 		if (right->prev == right->id) {
 			struct cluster *prev_left = left;
-			while (left->y == prev_left->y) {
+			while (left->y == ref_y) {
 				left->super = id_super;
 				if (left->next == left->id) {
 					break;
@@ -460,7 +461,7 @@ extern "C" void MergeSuperClusters(
 			}
 
 			if (left->next == left->id) {
-				if (left->y == prev_left->y) {
+				if (left->y == ref_y) {
 					left->next = right->id;
 					right->prev = left->id;
 					while (right->next != right->id) {
@@ -470,21 +471,54 @@ extern "C" void MergeSuperClusters(
 					return;
 				}
 				else {
+					prev_left = &clusters[left->prev];
 					prev_left->next = right->id;
 					right->prev = prev_left->id;
-					while (right->next != right->id) {
+					while (right->y == ref_y) {
 						right->super = id_super;
+						if (right->next == right->id) {
+							break;
+						}
 						right = &clusters[right->next];
 					}
-					return;
+
+					if (right->next == right->id) {
+						if (right->y == ref_y) {
+							right->next = left->id;
+							left->prev = right->id;
+							return;
+						}
+						else {
+							struct cluster *prev_right = &clusters[right->prev];
+							prev_right->next = left->id;
+							left->prev = prev_right->id;
+
+							left->next = right->id;
+							right->prev = left->id;
+							return;
+						}
+					}
+					else {
+						struct cluster *prev_right = &clusters[right->prev];
+						prev_right->next = left->id;
+						left->prev = prev_right->id;
+
+						left->next = right->id;
+						right->prev = left->id;
+						while (right->next != right->id) {
+							right->super = id_super;
+							right = &clusters[right->next];
+						}
+						return;
+					}
 				}
 			}
 			else {
-				right->super = id_super;
+				prev_left = &clusters[left->prev];
 				prev_left->next = right->id;
 				right->prev = prev_left->id;
 				struct cluster *prev_right = right;
-				while (right->y == prev_right->y) {
+				while (right->y == ref_y) {
 					right->super = id_super;
 					if (right->next == right->id) {
 						break;
@@ -493,7 +527,7 @@ extern "C" void MergeSuperClusters(
 				}
 
 				if (right->next == right->id) {
-					if (right->y == prev_right->y) {
+					if (right->y == ref_y) {
 						right->next = left->id;
 						left->prev = right->id;
 						while (left->next != left->id) {
@@ -535,7 +569,9 @@ extern "C" void MergeSuperClusters(
 							prev_left = &clusters[left->prev];
 							prev_left->next = right->id;
 							right->prev = prev_left->id;
+
 							right->next = left->id;
+							left->prev = right->id;
 							while (left->next != left->id) {
 								left->super = id_super;
 								left = &clusters[left->next];
@@ -545,12 +581,15 @@ extern "C" void MergeSuperClusters(
 					}
 				}
 				else {
-					// TODO IMPL
+					// NOTE: after linking these we are ready to repeat the work on the current scanline so nothing more to do in this codeblock
+					prev_right = &clusters[right->prev];
+					prev_right->next = left->id;
+					left->prev = prev_right->id;
 				}
 			}
 		}
 		else {
-			// TODO IMPL
+			// TODO in this case the `right` has a preceeding scanline
 		}
 	}
 	else {
