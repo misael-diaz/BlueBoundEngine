@@ -388,7 +388,7 @@ extern "C" void MergeSuperClusters(
 	struct cluster *prev_super = &clusters[id_super];
 	struct cluster *super = &clusters[id_super];
 	struct cluster *merge = &clusters[id_merge];
-	while (super->y <= merge->y) {
+	while (super->y < merge->y) {
 		if (super->next == super->id) {
 			break;
 		}
@@ -397,6 +397,7 @@ extern "C" void MergeSuperClusters(
 	}
 
 	if (super->next == super->id) {
+		// FIXME: handle this as if it's still possible solution path
 		fprintf(stderr, "%s\n", "error: surprising early end of super cluster");
 		// XCloseDisplay(display);
 		_exit(1);
@@ -411,7 +412,7 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
-	else if (super->y <= merge->y) {
+	else if (super->y < merge->y) {
 		fprintf(stderr, "%s\n", "error: implementation");
 		// XCloseDisplay(display);
 		_exit(1);
@@ -426,11 +427,139 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
-	else if (prev_super->y != merge->y) {
+	else if (super->y != merge->y) {
 		fprintf(stderr, "%s\n", "error: surprising implementation error");
 		// XCloseDisplay(display);
 		_exit(1);
 	}
+
+	struct cluster *left = super;
+	struct cluster *right = merge;
+	if (super->id < merge->id) {
+		left = super;
+		right = merge;
+	}
+	else {
+		left = merge;
+		right = super;
+	}
+
+	struct cluster *leaf_left = left;
+	struct cluster *leaf_right = right;
+
+	// NOTE: clusters are on the same scanline
+	if (left->prev == left->id) {
+		if (right->prev == right->id) {
+			struct cluster *prev_left = left;
+			while (left->y == prev_left->y) {
+				left->super = id_super;
+				if (left->next == left->id) {
+					break;
+				}
+				left = &clusters[left->next];
+			}
+
+			if (left->next == left->id) {
+				if (left->y == prev_left->y) {
+					left->next = right->id;
+					right->prev = left->id;
+					while (right->next != right->id) {
+						right->super = id_super;
+						right = &clusters[right->next];
+					}
+					return;
+				}
+				else {
+					prev_left->next = right->id;
+					right->prev = prev_left->id;
+					while (right->next != right->id) {
+						right->super = id_super;
+						right = &clusters[right->next];
+					}
+					return;
+				}
+			}
+			else {
+				right->super = id_super;
+				prev_left->next = right->id;
+				right->prev = prev_left->id;
+				struct cluster *prev_right = right;
+				while (right->y == prev_right->y) {
+					right->super = id_super;
+					if (right->next == right->id) {
+						break;
+					}
+					right = &clusters[right->next];
+				}
+
+				if (right->next == right->id) {
+					if (right->y == prev_right->y) {
+						right->next = left->id;
+						left->prev = right->id;
+						while (left->next != left->id) {
+							left->super = id_super;
+							left = &clusters[left->next];
+						}
+						return;
+					}
+					else {
+						prev_right = &clusters[right->prev];
+						prev_right->next = left->id;
+						left->prev = prev_right->id;
+
+						prev_left = left;
+						while (left->y == prev_left->y) {
+							left->super = id_super;
+							if (left->next == left->id) {
+								break;
+							}
+							left = &clusters[left->next];
+						}
+
+						if (left->next == left->id) {
+							if (left->y == prev_left->y) {
+								left->next = right->id;
+								right->prev = left->id;
+								return;
+							}
+							else {
+								prev_left = &clusters[left->prev];
+								prev_left->next = right->id;
+								right->prev = prev_left->id;
+								right->next = left->id;
+								left->prev = right->id;
+								return;
+							}
+						}
+						else {
+							prev_left = &clusters[left->prev];
+							prev_left->next = right->id;
+							right->prev = prev_left->id;
+							right->next = left->id;
+							while (left->next != left->id) {
+								left->super = id_super;
+								left = &clusters[left->next];
+							}
+							return;
+						}
+					}
+				}
+				else {
+					// TODO IMPL
+				}
+			}
+		}
+		else {
+			// TODO IMPL
+		}
+	}
+	else {
+		if (right->prev == right->id) {
+		}
+		else {
+		}
+	}
+
 
 	// merges clusters along the first scanline where they both lie on
 
@@ -446,31 +575,7 @@ extern "C" void MergeSuperClusters(
 	// FIXME: merge is connected to something else and that's `pr` so you
 	// need to conditionally determine this with (merge->prev == merge->id)
 
-	// creates first link (links end of super cluster with beginning of the other one)
-	if (prev_super->id < merge->id) {
-		prev_super->next = merge->id;
-		merge->prev = prev_super->id;
-	} else {
-		while (leaf_merge->y == prev_super->y) {
-			if (leaf_merge->next == leaf_merge->id) {
-				break;
-			}
-			leaf_merge = &clusters[leaf_merge->next];
-		}
 
-		if (leaf_merge->next == leaf_merge->id) {
-			// TODO add code if the cluster to be merged ends here
-			return;
-		}
-
-		// TODO adds the code to merge the super-clusters
-		struct clusters * const prev = &clusters[prev_super->prev];
-		// FIXME: the assumption that just the previous cluster is the one that we should use to merge is wrong because what I am thinking as I am writing this is that it should preceed merge by scanline and clearly this is not what I am doing
-		prev->next = merge->id;
-		merge->prev = prev->id;
-		merge->next = prev_super->id;
-		prev_super->next = FIXME;
-	}
 
 	// break the link to make sure that we don't have more than one link pointing at the same node
 	leaf_super->prev = leaf_super->id;
