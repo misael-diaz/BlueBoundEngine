@@ -11,7 +11,7 @@ I was talking to one of the mentors of the event about game development and he t
 
 So instead of preparing a talk about pointers that probably has been done many times I decided to first build an engaging demo, and there's nothing more relatable and engaging than a video game. Now instead of talking about building a game engine that can be called from Python, it is more practical to write a Computer Vision engine that detects where the player is. Even though everyone enjoys games, it is better to showcase a demo that has broader applications such as text and pattern recognition.
 
-## Architecture Considerations
+## Interfacing Considerations
 
 Why talking about interfacing with C/C++ instead of Rust? Because I like to have a good idea of how the code I am writing maps to assembly and that is starkly difficult with Rust but maneable otherwise with C/C++ (as long you don't overdo it with templates). And why interface with C/C++ at all? For many reasons really. If you are developing code in a zero trust environment, you cannot just pull code from any open-source project without jeopardizing the security of the application and the organization. You are expected to write it yourself. Now the moment that you have to introduce branching logic and/or loops you know that the code won't scale unless you can express it entirely with numpy arrays, which is the way of writing performant code natively from Python without having to worry about managing memory yourself which is the core strength of Python.
 
