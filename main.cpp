@@ -741,7 +741,12 @@ extern "C" void MergeSuperClusters(
 			// NOTE: we can confidently skip to the merge loop
 		}
 		else {
-			// TODO: we have work to do here before we can move to the merge loop
+			// complains because this execution path should not happen
+			// since we explicitly looked for the first instance where
+			// both clusters have the same y-coord values.
+			fprintf(stderr, "%s\n", "error: merge impl error");
+			// XCloseDisplay(display);
+			_exit(1);
 		}
 	}
 
