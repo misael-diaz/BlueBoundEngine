@@ -17,6 +17,8 @@ Why talk about interfacing with C/C++ instead of Rust? Because I like to have a 
 
 When you know that you can write code that executes close to the bare metal you can leverage that skill to boost your Python application. I know this is not new, many developers have done this and there are probably many approaches you could take but my opinion is if you can avoid altogether the passing of data at the boundary entirely do that. But if you have and you own the C/C++ code you can do it so that all that you need is a pointer to the base memory address where the engine will work on. And this is what I am going to focus on this project. Now this repository will only host the C/C++ engine code, it does not matter from where you call it because all that it needs is a memory address.
 
+Another point I want to stress in the talk that I hope this project supports my point is that you can afford to write simple C/C++ code and still get a substantial performance boost when compared to the pure Python implementation. Now, I do not intend to implement the engine in Python to demonstrate that; but instead, if the unoptimized engine manages to hit a 30 FPS it is enough for me to recommend that you don't need to be an expert C/C++ developer to write code that performs. And "simple" is somewhat ambiguous because it all boils down to your experience. If you have never written C/C++ code before, even code that I consider simple might look daunting to you. So by simple I mean that even if your implementation leverages mostly conditionals and loops then maybe that's good enough (of course it varies from problem to problem but this one is not trivial so I will have to wait and see).
+
 ## Build
 
 To obtain a development build use the following command-line string:
