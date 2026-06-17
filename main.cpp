@@ -403,6 +403,7 @@ extern "C" void MergeSuperClusters(
 		_exit(1);
 	}
 	else if (super->id < merge->id) {
+		// FIXME: this assumes that `super` is the ultimate super cluster but that's not necessarily the case and so this check needs to be updated accordingly
 		fprintf(stderr, "%s\n", "error: surprising discontinuity");
 		// XCloseDisplay(display);
 		_exit(1);
