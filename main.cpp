@@ -468,7 +468,7 @@ extern "C" void MergeSuperClusters(
 						right->super = id_super;
 						right = &clusters[right->next];
 					}
-					return;
+					goto check_merge;
 				}
 				else {
 					prev_left = &clusters[left->prev];
@@ -486,7 +486,7 @@ extern "C" void MergeSuperClusters(
 						if (right->y == ref_y) {
 							right->next = left->id;
 							left->prev = right->id;
-							return;
+							goto check_merge;
 						}
 						else {
 							struct cluster *prev_right = &clusters[right->prev];
@@ -495,7 +495,7 @@ extern "C" void MergeSuperClusters(
 
 							left->next = right->id;
 							right->prev = left->id;
-							return;
+							goto check_merge;
 						}
 					}
 					else {
@@ -509,7 +509,7 @@ extern "C" void MergeSuperClusters(
 							right->super = id_super;
 							right = &clusters[right->next];
 						}
-						return;
+						goto check_merge;
 					}
 				}
 			}
@@ -534,7 +534,7 @@ extern "C" void MergeSuperClusters(
 							left->super = id_super;
 							left = &clusters[left->next];
 						}
-						return;
+						goto check_merge;
 					}
 					else {
 						prev_right = &clusters[right->prev];
@@ -554,7 +554,7 @@ extern "C" void MergeSuperClusters(
 							if (left->y == prev_left->y) {
 								left->next = right->id;
 								right->prev = left->id;
-								return;
+								goto check_merge;
 							}
 							else {
 								prev_left = &clusters[left->prev];
@@ -562,7 +562,7 @@ extern "C" void MergeSuperClusters(
 								right->prev = prev_left->id;
 								right->next = left->id;
 								left->prev = right->id;
-								return;
+								goto check_merge;
 							}
 						}
 						else {
@@ -576,7 +576,7 @@ extern "C" void MergeSuperClusters(
 								left->super = id_super;
 								left = &clusters[left->next];
 							}
-							return;
+							goto check_merge;
 						}
 					}
 				}
@@ -610,7 +610,7 @@ extern "C" void MergeSuperClusters(
 						right->super = id_super;
 						right = &clusters[right->next];
 					}
-					return;
+					goto check_merge;
 				}
 				else {
 					struct cluster *prev_left = &clusters[left->prev];
@@ -630,7 +630,7 @@ extern "C" void MergeSuperClusters(
 						if (right->y == ref_y) {
 							right->next = left->id;
 							left->prev = right->id;
-							return;
+							goto check_merge;
 						}
 						else {
 							prev_right = &clusters[right->prev];
@@ -639,7 +639,7 @@ extern "C" void MergeSuperClusters(
 
 							left->next = right->id;
 							right->prev = left->id;
-							return;
+							goto check_merge;
 						}
 					}
 					else {
@@ -653,7 +653,7 @@ extern "C" void MergeSuperClusters(
 							right->super = id_super;
 							right= &clusters[right->next];
 						}
-						return;
+						goto check_merge;
 					}
 				}
 			}
@@ -678,7 +678,7 @@ extern "C" void MergeSuperClusters(
 							left->super = id_super;
 							left = &clusters[left->next];
 						}
-						return;
+						goto check_merge;
 					}
 					else {
 						prev_right = &clusters[right->prev];
@@ -700,7 +700,7 @@ extern "C" void MergeSuperClusters(
 							if (left->y == prev_left->y) {
 								left->next = right->id;
 								right->prev = left->id;
-								return;
+								goto check_merge;
 							}
 							else {
 								prev_left = &clusters[left->prev];
@@ -709,7 +709,7 @@ extern "C" void MergeSuperClusters(
 
 								right->next = left->id;
 								left->prev = right->id;
-								return;
+								goto check_merge;
 							}
 						}
 						else {
@@ -723,7 +723,7 @@ extern "C" void MergeSuperClusters(
 								left->super = id_super;
 								left = &clusters[left->next];
 							}
-							return;
+							goto check_merge;
 						}
 					}
 				}
@@ -775,7 +775,7 @@ extern "C" void MergeSuperClusters(
 					right->super = id_super;
 					right = &clusters[right->next];
 				}
-				return;
+				goto check_merge;
 			}
 			else {
 				struct cluster *prev_left = &clusters[left->prev];
@@ -795,7 +795,7 @@ extern "C" void MergeSuperClusters(
 					if (right->y == ref_y) {
 						right->next = left->id;
 						left->prev = right->id;
-						return;
+						goto check_merge;
 					}
 					else {
 						struct cluster *prev_right = &clusters[right->prev];
@@ -804,7 +804,7 @@ extern "C" void MergeSuperClusters(
 
 						left->next = right->id;
 						right->prev = left->id;
-						return;
+						goto check_merge;
 					}
 				}
 				else {
@@ -819,7 +819,7 @@ extern "C" void MergeSuperClusters(
 						right->super = id_super;
 						right = &clusters[right->next];
 					}
-					return;
+					goto check_merge;
 				}
 			}
 		}
@@ -845,7 +845,7 @@ extern "C" void MergeSuperClusters(
 						left->super = id_super;
 						left = &clusters[left->next];
 					}
-					return;
+					goto check_merge;
 				}
 				else {
 					struct cluster *prev_right = &clusters[right->prev];
@@ -865,7 +865,7 @@ extern "C" void MergeSuperClusters(
 						if (left->y == prev_left->y) {
 							left->next = right->id;
 							right->prev = left->id;
-							return;
+							goto check_merge;
 						}
 						else {
 							prev_left = &clusters[left->prev];
@@ -874,7 +874,7 @@ extern "C" void MergeSuperClusters(
 
 							right->next = left->id;
 							left->prev = right->id;
-							return;
+							goto check_merge;
 						}
 					}
 					else {
@@ -889,7 +889,7 @@ extern "C" void MergeSuperClusters(
 							left->super = id_super;
 							left = &clusters[left->next];
 						}
-						return;
+						goto check_merge;
 					}
 				}
 			}
@@ -902,10 +902,30 @@ extern "C" void MergeSuperClusters(
 		}
 	}
 
+	fprintf(stderr, "%s\n", "error: should never execute");
+	return;
 	// TODO:
 	// check ids
 	// check that the super data member points to the new one
 	// check that the cluster count matches the original distributed count
+check_merge: {
+		     // checks the cluster count and we have to initialize to 1 to account for the super-cluster itself
+		     count = 1;
+		     iter = ref_super;
+		     while (iter->next != iter->id) {
+			     iter = &clusters[iter->next];
+			     ++count;
+		     }
+
+		     if (count_total != count) {
+			     fprintf(stderr, "%s\n", "error: merge count");
+			     fprintf(stderr, "total: %ld count: %ld\n", count_total, count);
+			     // XCloseDisplay(display);
+			     _exit(1);
+		     }
+
+		     return;
+	     }
 }
 
 int main(int argc, char *argv[])
