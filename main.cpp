@@ -959,6 +959,18 @@ check_merge: {
 			     }
 			     iter = &clusters[iter->next];
 		     }
+
+		     iter = ref_super;
+		     struct cluster *next = &clusters[iter->next];
+		     while (next->next != next->id) {
+			     if (iter->id >= next->id) {
+				     fprintf(stderr, "error: wrong merge order curr: %ld next:\n", iter->id, next->id);
+				     // XCloseDisplay(display);
+				     _exit(1);
+			     }
+			     iter = &clusters[iter->next];
+			     next = &clusters[next->next];
+		     }
 		     return;
 	     }
 }
