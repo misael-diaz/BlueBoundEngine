@@ -322,7 +322,7 @@ extern "C" void MergeSuperClusters(
 
 	int64_t id_super = -1;
 	int64_t id_merge = -1;
-	if (id_super < next->super) {
+	if (superid < next->super) {
 		id_super = superid;
 		id_merge = next->super;
 	}
