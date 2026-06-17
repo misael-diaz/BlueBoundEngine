@@ -417,8 +417,8 @@ extern "C" void MergeSuperClusters(
 		// XCloseDisplay(display);
 		_exit(1);
 	}
-	else if (prev_super->id == super->id) {
-		fprintf(stderr, "%s\n", "error: surprising implementation error");
+	else if ((prev_super->id == super->id) && (super->id != id_super)) {
+		fprintf(stderr, "%s\n", "error: surprising implementation error ids");
 		// XCloseDisplay(display);
 		_exit(1);
 	}
@@ -428,7 +428,7 @@ extern "C" void MergeSuperClusters(
 		_exit(1);
 	}
 	else if (super->y != merge->y) {
-		fprintf(stderr, "%s\n", "error: surprising implementation error");
+		fprintf(stderr, "%s\n", "error: surprising implementation error not same scanline");
 		// XCloseDisplay(display);
 		_exit(1);
 	}
