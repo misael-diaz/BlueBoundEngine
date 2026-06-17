@@ -750,6 +750,157 @@ extern "C" void MergeSuperClusters(
 		}
 	}
 
+	while (1) {
+		if (left->y != right->y) {
+			fprintf(stderr, "%s\n", "error: scanline mismatch error");
+			// XCloseDisplay(display);
+			_exit(1);
+		}
+
+		ref_y = left->y;
+
+		while (left->y == ref_y) {
+			left->super = id_super;
+			if (left->next == left->id) {
+				break;
+			}
+			left = &clusters[left->next];
+		}
+
+		if (left->next == left->id) {
+			if (left->y == ref_y) {
+				left->next = right->id;
+				right->prev = left->id;
+				while (right->next != right->id) {
+					right->super = id_super;
+					right = &clusters[right->next];
+				}
+				return;
+			}
+			else {
+				struct cluster *prev_left = &clusters[left->prev];
+				prev_left->next = right->id;
+				right->prev = prev_left->id;
+
+				// `left` is the last and we need to link to it
+				while (right->y == ref_y) {
+					right->super = id_super;
+					if (right->next == right->id) {
+						break;
+					}
+					right = &clusters[right->next];
+				}
+
+				if (right->next == right->id) {
+					if (right->y == ref_y) {
+						right->next = left->id;
+						left->prev = right->id;
+						return;
+					}
+					else {
+						struct cluster *prev_right = &clusters[right->prev];
+						prev_right->next = left->id;
+						left->prev = prev_right->id;
+
+						left->next = right->id;
+						right->prev = left->id;
+						return;
+					}
+				}
+				else {
+					struct cluster *prev_right = &clusters[right->prev];
+					prev_right->next = left->id;
+					left->prev = prev_right->id;
+
+					left->next = right->id;
+					right->prev = left->id;
+
+					while (right->next != right->id) {
+						right->super = id_super;
+						right = &clusters[right->next];
+					}
+					return;
+				}
+			}
+		}
+		else {
+			// you need to connect to the right and advance to the next scanline on the right if any
+			struct cluster *prev_left = &clusters[left->prev];
+			prev_left->next = right->id;
+			right->prev = prev_left->id;
+
+			while (right->y == ref_y) {
+				right->super = id_super;
+				if (right->next == right->id) {
+					break;
+				}
+				right = &clusters[right->next];
+			}
+
+			if (right->next == right->id) {
+				if (right->y == ref_y) {
+					right->next = left->id;
+					left->prev = right->id;
+					while (left->next != left->id) {
+						left->super = id_super;
+						left = &clusters[left->next];
+					}
+					return;
+				}
+				else {
+					struct cluster *prev_right = &clusters[right->prev];
+					prev_right->next = left->id;
+					left->prev = prev_right->id;
+
+					prev_left = left;
+					// still need to connect to right
+					while (left->y == prev_left->y) {
+						if (left->next == left->id) {
+							break;
+						}
+						left = &clusters[left->next];
+					}
+
+					if (left->next == left->id) {
+						if (left->y == prev_left->y) {
+							left->next = right->id;
+							right->prev = left->id;
+							return;
+						}
+						else {
+							prev_left = &clusters[left->prev];
+							prev_left->next = right->id;
+							right->prev = prev_left->id;
+
+							right->next = left->id;
+							left->prev = right->id;
+							return;
+						}
+					}
+					else {
+						prev_left = &clusters[left->prev];
+						prev_left->next = right->id;
+						right->prev = prev_left->id;
+
+						right->next = left->id;
+						left->prev = right->id;
+
+						while (left->next != left->id) {
+							left->super = id_super;
+							left = &clusters[left->next];
+						}
+						return;
+					}
+				}
+			}
+			else {
+				// links clusters and we are ready for the next iteration
+				struct cluster *prev_right = &clusters[right->prev];
+				prev_right->next = left->id;
+				left->prev = prev_right->id;
+			}
+		}
+	}
 
 	// merges clusters along the first scanline where they both lie on
 
