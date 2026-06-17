@@ -1,5 +1,5 @@
 # BlueBoundEngine
-Real-time Detection of Sonic The Hedgehog Retro Games.
+Implements a deterministic, data-centric, Computer Vision Engine. Currently the engine is applied for the Real-Time Detection of Sonic The Hedgehog Retro Games.
 
 **Development Status**: Under active development, currently writing exploratory code to reach a proof of concept level.
 
