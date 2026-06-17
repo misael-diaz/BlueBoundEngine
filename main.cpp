@@ -460,6 +460,7 @@ extern "C" void MergeSuperClusters(
 				left = &clusters[left->next];
 			}
 
+			left->super = id_super;
 			if (left->next == left->id) {
 				if (left->y == ref_y) {
 					left->next = right->id;
@@ -468,6 +469,7 @@ extern "C" void MergeSuperClusters(
 						right->super = id_super;
 						right = &clusters[right->next];
 					}
+					right->super = id_super;
 					goto check_merge;
 				}
 				else {
@@ -482,6 +484,7 @@ extern "C" void MergeSuperClusters(
 						right = &clusters[right->next];
 					}
 
+					right->super = id_super;
 					if (right->next == right->id) {
 						if (right->y == ref_y) {
 							right->next = left->id;
@@ -509,6 +512,7 @@ extern "C" void MergeSuperClusters(
 							right->super = id_super;
 							right = &clusters[right->next];
 						}
+						right->super = id_super;
 						goto check_merge;
 					}
 				}
@@ -526,6 +530,7 @@ extern "C" void MergeSuperClusters(
 					right = &clusters[right->next];
 				}
 
+				right->super = id_super;
 				if (right->next == right->id) {
 					if (right->y == ref_y) {
 						right->next = left->id;
@@ -534,6 +539,7 @@ extern "C" void MergeSuperClusters(
 							left->super = id_super;
 							left = &clusters[left->next];
 						}
+						left->super = id_super;
 						goto check_merge;
 					}
 					else {
@@ -550,6 +556,7 @@ extern "C" void MergeSuperClusters(
 							left = &clusters[left->next];
 						}
 
+						left->super = id_super;
 						if (left->next == left->id) {
 							if (left->y == prev_left->y) {
 								left->next = right->id;
@@ -576,6 +583,7 @@ extern "C" void MergeSuperClusters(
 								left->super = id_super;
 								left = &clusters[left->next];
 							}
+							left->super = id_super;
 							goto check_merge;
 						}
 					}
@@ -602,6 +610,7 @@ extern "C" void MergeSuperClusters(
 				left = &clusters[left->next];
 			}
 
+			left->super = id_super;
 			if (left->next == left->id) {
 				if (left->y == ref_y) {
 					left->next = right->id;
@@ -610,6 +619,7 @@ extern "C" void MergeSuperClusters(
 						right->super = id_super;
 						right = &clusters[right->next];
 					}
+					right->super = id_super;
 					goto check_merge;
 				}
 				else {
@@ -626,6 +636,7 @@ extern "C" void MergeSuperClusters(
 						right = &clusters[right->next];
 					}
 
+					right->super = id_super;
 					if (right->next == right->id) {
 						if (right->y == ref_y) {
 							right->next = left->id;
@@ -653,6 +664,7 @@ extern "C" void MergeSuperClusters(
 							right->super = id_super;
 							right= &clusters[right->next];
 						}
+						right->super = id_super;
 						goto check_merge;
 					}
 				}
@@ -670,6 +682,7 @@ extern "C" void MergeSuperClusters(
 					right = &clusters[right->next];
 				}
 
+				right->super = id_super;
 				if (right->next == right->id) {
 					if (right->y == ref_y) {
 						right->next = left->id;
@@ -678,6 +691,7 @@ extern "C" void MergeSuperClusters(
 							left->super = id_super;
 							left = &clusters[left->next];
 						}
+						left->super = id_super;
 						goto check_merge;
 					}
 					else {
@@ -689,6 +703,7 @@ extern "C" void MergeSuperClusters(
 
 						prev_left = left;
 						while (left->y == prev_left->y) {
+							left->super = id_super;
 							if (left->next == left->id) {
 								break;
 							}
@@ -696,6 +711,7 @@ extern "C" void MergeSuperClusters(
 						}
 
 						// then we have to update `super` data member of `left` until we reach the end
+						left->super = id_super;
 						if (left->next == left->id) {
 							if (left->y == prev_left->y) {
 								left->next = right->id;
@@ -723,6 +739,7 @@ extern "C" void MergeSuperClusters(
 								left->super = id_super;
 								left = &clusters[left->next];
 							}
+							left->super = id_super;
 							goto check_merge;
 						}
 					}
@@ -767,6 +784,7 @@ extern "C" void MergeSuperClusters(
 			left = &clusters[left->next];
 		}
 
+		left->super = id_super;
 		if (left->next == left->id) {
 			if (left->y == ref_y) {
 				left->next = right->id;
@@ -775,6 +793,7 @@ extern "C" void MergeSuperClusters(
 					right->super = id_super;
 					right = &clusters[right->next];
 				}
+				right->super = id_super;
 				goto check_merge;
 			}
 			else {
@@ -791,6 +810,7 @@ extern "C" void MergeSuperClusters(
 					right = &clusters[right->next];
 				}
 
+				right->super = id_super;
 				if (right->next == right->id) {
 					if (right->y == ref_y) {
 						right->next = left->id;
@@ -819,6 +839,7 @@ extern "C" void MergeSuperClusters(
 						right->super = id_super;
 						right = &clusters[right->next];
 					}
+					right->super = id_super;
 					goto check_merge;
 				}
 			}
@@ -837,6 +858,7 @@ extern "C" void MergeSuperClusters(
 				right = &clusters[right->next];
 			}
 
+			right->super = id_super;
 			if (right->next == right->id) {
 				if (right->y == ref_y) {
 					right->next = left->id;
@@ -845,6 +867,7 @@ extern "C" void MergeSuperClusters(
 						left->super = id_super;
 						left = &clusters[left->next];
 					}
+					left->super = id_super;
 					goto check_merge;
 				}
 				else {
@@ -855,12 +878,14 @@ extern "C" void MergeSuperClusters(
 					prev_left = left;
 					// still need to connect to right
 					while (left->y == prev_left->y) {
+						left->super = id_super;
 						if (left->next == left->id) {
 							break;
 						}
 						left = &clusters[left->next];
 					}
 
+					left->super = id_super;
 					if (left->next == left->id) {
 						if (left->y == prev_left->y) {
 							left->next = right->id;
@@ -889,6 +914,7 @@ extern "C" void MergeSuperClusters(
 							left->super = id_super;
 							left = &clusters[left->next];
 						}
+						left->super = id_super;
 						goto check_merge;
 					}
 				}
@@ -924,6 +950,15 @@ check_merge: {
 			     _exit(1);
 		     }
 
+		     iter = ref_super;
+		     while (iter->next != iter->id) {
+			     if (iter->super != id_super) {
+				     fprintf(stderr, "error: missed updating super data member of cluster with id %ld\n", iter->id);
+				     // XCloseDisplay(display);
+				     _exit(1);
+			     }
+			     iter = &clusters[iter->next];
+		     }
 		     return;
 	     }
 }
