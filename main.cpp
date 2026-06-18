@@ -320,21 +320,53 @@ extern "C" void MergeSuperClusters(
 		}
 	}
 
+	struct cluster *super = &clusters[superid];
+	while (super->super != super->id) {
+		if (-1 == super->super) {
+			fprintf(stderr, "%s\n", "error: uninitialized super data member");
+			// XCloseDisplay(display);
+			_exit(1);
+		}
+		super = &clusters[super->super];
+	}
+
+	if (super->prev != super->id) {
+		fprintf(stderr, "%s\n", "error: super cluster traversal failed");
+		// XCloseDisplay(display);
+		_exit(1);
+	}
+
+	struct cluster *merge = next;
+	while (merge->super != merge->id) {
+		if (-1 == merge->super) {
+			fprintf(stderr, "%s\n", "error: uninitialized super data member");
+			// XCloseDisplay(display);
+			_exit(1);
+		}
+		merge = &clusters[merge->super];
+	}
+
+	if (merge->prev != merge->id) {
+		fprintf(stderr, "%s\n", "error: super cluster traversal failed");
+		// XCloseDisplay(display);
+		_exit(1);
+	}
+
 	int64_t id_super = -1;
 	int64_t id_merge = -1;
-	if (superid < next->super) {
-		id_super = superid;
-		id_merge = next->super;
+	if (super->super < merge->super) {
+		id_super = super->super;
+		id_merge = merge->super;
 	}
 	else {
-		id_super = next->super;
-		id_merge = superid;
+		id_super = merge->super;
+		id_merge = super->super;
 	}
 
 	struct cluster * const ref_super = &clusters[id_super];
 	struct cluster * const ref_merge = &clusters[id_merge];
 	if (ref_super->prev != ref_super->id) {
-		fprintf(stderr, "%s\n", "error: not a super cluster");
+		fprintf(stderr, "%s\n", "error: 'ref_super' not a super cluster");
 		//XCloseDisplay(display);
 		_exit(1);
 	}
@@ -344,7 +376,7 @@ extern "C" void MergeSuperClusters(
 		_exit(1);
 	}
 	else if (ref_merge->prev != ref_merge->id) {
-		fprintf(stderr, "%s\n", "error: not a super cluster");
+		fprintf(stderr, "%s\n", "error: 'ref_merge' not a super cluster");
 		//XCloseDisplay(display);
 		_exit(1);
 	}
@@ -353,10 +385,6 @@ extern "C" void MergeSuperClusters(
 		//XCloseDisplay(display);
 		_exit(1);
 	}
-
-	// TODO: Now you can iterate with `super` and `merge`
-	//       store the `last_id` and the `leaf_id` these are needed to properly
-	//       merge the new nodes that fall between these two complain if it does not
 
 	// gets the total cluster count prior to the merge to verify the merge code
 	int64_t count = 0;
@@ -375,66 +403,8 @@ extern "C" void MergeSuperClusters(
 	// while-loops yield the count of the linked-clusters excluding the heads
 	int64_t const count_total = 2 + count;
 
-	// FIXME: this code should check if the merging happens between nodes on the
-	//        same scanline or not; a pitfall is to assume that the previous node
-	//        is on the same scanline as the node to be merged from the other super
-	//        cluster. And so we must check for this not only rely on the index
-	//        value to act upon this. Ok does this means that we have to do a
-	//        search on the same scanline, probably that's the surest approach.
-	count = 0;
-	// there's nothing to merge until we pass beyond the portion of the scanline
-	// that belongs to the cluster to be merged and this is why we need to advance
-	// the iterator
-	struct cluster *prev_super = &clusters[id_super];
-	struct cluster *super = &clusters[id_super];
-	struct cluster *merge = &clusters[id_merge];
-	while (super->y < merge->y) {
-		if (super->next == super->id) {
-			break;
-		}
-		prev_super = &clusters[super->id];
-		super = &clusters[super->next];
-	}
-
-	if (super->next == super->id) {
-		// FIXME: handle this as if it's still possible solution path
-		fprintf(stderr, "%s\n", "error: surprising early end of super cluster");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (super->id < merge->id) {
-		// FIXME: this assumes that `super` is the ultimate super cluster but that's not necessarily the case and so this check needs to be updated accordingly
-		fprintf(stderr, "%s\n", "error: surprising discontinuity");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (super->id == merge->id) {
-		fprintf(stderr, "%s\n", "error: surprising already merged");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (super->y < merge->y) {
-		fprintf(stderr, "%s\n", "error: implementation");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-	else if ((prev_super->id == super->id) && (super->id != id_super)) {
-		fprintf(stderr, "%s\n", "error: surprising implementation error ids");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (prev_super->id == merge->id) {
-		fprintf(stderr, "%s\n", "error: surprising already merged");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (super->y != merge->y) {
-		fprintf(stderr, "%s\n", "error: surprising implementation error not same scanline");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
-
-	int64_t ref_y = super->y;
+	super = &clusters[id_super];
+	merge = &clusters[id_merge];
 	struct cluster *left = super;
 	struct cluster *right = merge;
 	if (super->id < merge->id) {
@@ -449,7 +419,34 @@ extern "C" void MergeSuperClusters(
 	struct cluster *leaf_left = left;
 	struct cluster *leaf_right = right;
 
+	// FIXME: assert that the cluster to be linked satisfies the id-ordering
+	if (left->y < right->y) {
+		while (right->y > left->y) {
+			right->super = id_super;
+			if (right->next == right->id) {
+				fprintf(stderr, "%s\n", "error: early end of super-cluster");
+				// XCloseDisplay(display);
+				_exit(1);
+			}
+			right = &clusters[right->next];
+		}
+		right->super = id_super;
+	}
+	else if (left->y > right->y) {
+		while (left->y > right->y) {
+			left->super = id_super;
+			if (left->next == left->id) {
+				fprintf(stderr, "%s\n", "error: early end of super-cluster");
+				// XCloseDisplay(display);
+				_exit(1);
+			}
+			left = &clusters[left->next];
+		}
+		left->super = id_super;
+	}
+
 	// NOTE: clusters are on the same scanline
+	int64_t ref_y = left->y;
 	if (left->prev == left->id) {
 		if (right->prev == right->id) {
 			struct cluster *prev_left = left;
@@ -965,7 +962,7 @@ check_merge: {
 		     struct cluster *next = &clusters[iter->next];
 		     while (next->next != next->id) {
 			     if (iter->id >= next->id) {
-				     fprintf(stderr, "error: wrong merge order curr: %ld next:\n", iter->id, next->id);
+				     fprintf(stderr, "error: wrong merge order curr: %ld next:%ld\n", iter->id, next->id);
 				     // XCloseDisplay(display);
 				     _exit(1);
 			     }
@@ -1495,6 +1492,22 @@ int main(int argc, char *argv[])
 				iter = &clusters[iter->prev];
 			}
 			iter->super = iter->id;
+		}
+		else {
+			while (iter->super != iter->id) {
+				if (-1 == iter->super) {
+					fprintf(stderr, "%s\n", "error: unexpected uninitialized super-cluster");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				iter = &clusters[iter->super];
+			}
+
+			if (iter->prev != iter->id) {
+				fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
+				XCloseDisplay(display);
+				_exit(1);
+			}
 		}
 
 		int64_t const super = iter->super;
