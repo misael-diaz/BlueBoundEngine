@@ -924,7 +924,20 @@ check_merge: {
 		     }
 
 		     if (count_total != count) {
-			     fprintf(stderr, "%s\n", "error: merge count");
+			     fprintf(stderr, "%s\n", "error: forward merge count");
+			     fprintf(stderr, "total: %ld count: %ld\n", count_total, count);
+			     // XCloseDisplay(display);
+			     _exit(1);
+		     }
+
+		     count = 1;
+		     while (iter->prev != iter->id) {
+			     iter = &clusters[iter->prev];
+			     ++count;
+		     }
+
+		     if (count_total != count) {
+			     fprintf(stderr, "%s\n", "error: backward merge count");
 			     fprintf(stderr, "total: %ld count: %ld\n", count_total, count);
 			     // XCloseDisplay(display);
 			     _exit(1);
