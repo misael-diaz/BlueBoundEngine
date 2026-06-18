@@ -321,33 +321,15 @@ extern "C" void MergeSuperClusters(
 	}
 
 	struct cluster *super = &clusters[superid];
-	while (super->super != super->id) {
-		if (-1 == super->super) {
-			fprintf(stderr, "%s\n", "error: uninitialized super data member");
-			// XCloseDisplay(display);
-			_exit(1);
-		}
-		super = &clusters[super->super];
-	}
-
 	if (super->prev != super->id) {
-		fprintf(stderr, "%s\n", "error: super cluster traversal failed");
+		fprintf(stderr, "%s\n", "error: super-cluster `super` assignment failed previously");
 		// XCloseDisplay(display);
 		_exit(1);
 	}
 
-	struct cluster *merge = next;
-	while (merge->super != merge->id) {
-		if (-1 == merge->super) {
-			fprintf(stderr, "%s\n", "error: uninitialized super data member");
-			// XCloseDisplay(display);
-			_exit(1);
-		}
-		merge = &clusters[merge->super];
-	}
-
+	struct cluster *merge = &clusters[next->super];
 	if (merge->prev != merge->id) {
-		fprintf(stderr, "%s\n", "error: super cluster traversal failed");
+		fprintf(stderr, "%s\n", "error: super-cluster `merge` assignment failed previously");
 		// XCloseDisplay(display);
 		_exit(1);
 	}
@@ -1493,21 +1475,15 @@ int main(int argc, char *argv[])
 			}
 			iter->super = iter->id;
 		}
-		else {
-			while (iter->super != iter->id) {
-				if (-1 == iter->super) {
-					fprintf(stderr, "%s\n", "error: unexpected uninitialized super-cluster");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				iter = &clusters[iter->super];
-			}
-
-			if (iter->prev != iter->id) {
-				fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
-				XCloseDisplay(display);
-				_exit(1);
-			}
+		else if (iter->prev != iter->id) {
+			fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		else if (iter->super != iter->id) {
+			fprintf(stderr, "%s\n", "error: unexpected error not a super cluster by id");
+			XCloseDisplay(display);
+			_exit(1);
 		}
 
 		int64_t const super = iter->super;
