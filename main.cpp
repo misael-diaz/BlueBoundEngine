@@ -1490,15 +1490,18 @@ int main(int argc, char *argv[])
 			}
 			iter->super = iter->id;
 		}
-		else if (iter->prev != iter->id) {
-			fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-		else if (iter->super != iter->id) {
-			fprintf(stderr, "%s\n", "error: unexpected error not a super cluster by id");
-			XCloseDisplay(display);
-			_exit(1);
+		else {
+			iter = &clusters[iter->super];
+			if (iter->prev != iter->id) {
+				fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+			else if (iter->super != iter->id) {
+				fprintf(stderr, "%s\n", "error: unexpected error not a super cluster by id");
+				XCloseDisplay(display);
+				_exit(1);
+			}
 		}
 
 		int64_t const super = iter->super;
