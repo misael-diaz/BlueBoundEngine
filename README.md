@@ -34,7 +34,10 @@ This week was characterized by putting the initial pieces in place so that the e
 
 ### Week 2: Algorithmic Grouping
 
-This week has been mostly concerned with the core engineering task of exploring the problem space to design the cluster-merging algorithm. This week has been characterized by non-linear development, debugging, fixing, rewriting, and iterating on ideas based on a simplified data set.
+This week has been mostly concerned with the core engineering task of exploring the problem space to design the cluster-merging algorithm. There has been non-linear development, debugging, fixing, rewriting, and iterating on ideas based on crafted data sets.
+
+- **cluster-merge algorithm**: as mention previously we group pixels (that belong to the player) that are next to each other into a cluster. Then we start merging those clusters into a super-cluster structure. The merge algorithm is able to group overlapping squares into a single super-cluster, which is the expected result. The code has also been used to merge the pixels that comprise the letter V, this letter has been chosen deliberately because it is not until the very end that the algorithm determines that a merge is needed due to the convergence point (or vertex).
+- **currently rewriting**: the logic that handles the merge of a cluster in a scanline is under undergoing revision. This part of the algorithm was written before I introduce the `super` data member that stores the id of the super-cluster and so any links made between them would cause problems later on because `super` is uninitialized. This is why the computation has been disabled. At least I know that the merge between scanlines (harder to get right) is working.
 
 ## Build
 
