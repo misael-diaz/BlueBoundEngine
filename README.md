@@ -23,6 +23,8 @@ Another point I want to stress in the talk that I hope this project supports my 
 
 ### Week 1
 
+This week was characterized by putting the initial pieces in place so that the engine could process a framebuffer from an X11 client window application (retro game or any other app really).
+
 - **command-line interface**: added the command-line interface so that the engine can query the X11 server the current frame of the game window by passing it the window resource id. Instead of hardcoding the game window resource id, which is dynamic, or reading it from a file I decided to pass it as an argument to the engine. This is useful for simplifying the development experience particularly the resource id can easily be passed as part of the arguments to the GNU debugger (`gdb`).
 - **framebuffer**: leverages `XGetImage()` to get at the framebuffer data of the game or any X11 client window application for that matter. So instead of developing right from the beginning with the game framebuffer the code is processing static images such as squares to test the clustering logic.
 - **visual characteristics**: leveraged the Xlib's visual structure to know the RGB masks so that the engine can extract the Red Green and Blue 8-bit values of the pixels with bitwise operations. Without this we cannot possibly differentiate the player (which usually has distinctive colors) from the background or other game entities. We cannot even start to process anything without the visual information because we are processing raw bytes and because it varies from visual to visual and so the right approach is to get that information at runtime.
