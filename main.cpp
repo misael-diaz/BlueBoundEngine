@@ -1278,6 +1278,7 @@ int main(int argc, char *argv[])
 	}
 	fprintf(stdout, "%s\n", "merging clusters");
 
+	/*
 	for (int64_t y = 0; y != height; ++y) {
 		for (int64_t x = 0; x != width; ++x) {
 			int quit = 0;
@@ -1403,6 +1404,7 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+	*/
 
 	// TODO: assert that cluster-iterators point to actual clusters and only point to nodes on edge-cases
 	for (int64_t i = 0; i != (clno - 1); ++i) {
