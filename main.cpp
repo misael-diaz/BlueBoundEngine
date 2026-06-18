@@ -398,9 +398,6 @@ extern "C" void MergeSuperClusters(
 		right = super;
 	}
 
-	struct cluster *leaf_left = left;
-	struct cluster *leaf_right = right;
-
 	// FIXME: assert that the cluster to be linked satisfies the id-ordering
 	if (left->y < right->y) {
 		while (right->y > left->y) {
