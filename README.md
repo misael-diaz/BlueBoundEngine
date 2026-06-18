@@ -21,7 +21,7 @@ Another point I want to stress in the talk that I hope this project supports my 
 
 ## Development Logs
 
-### Week 1
+### Week 1: Reading and Probing the Framebuffer
 
 This week was characterized by putting the initial pieces in place so that the engine could process a framebuffer from an X11 client window application (retro game or any other app really).
 
