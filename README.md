@@ -32,6 +32,10 @@ This week was characterized by putting the initial pieces in place so that the e
 - **extendable memory mapping**: decided that it would be best to start working with a base pointer to the memory region that is going to be used by the engine. Wrote the initial code needed to request the Linux kernel for a memory mapping that we can grow later if needed. This is the base pointer that the engine is going to pass during initialization to the Python code (the orchestrator).
 - **cluster structure**: introduced the cluster data structure for fast cluster merging, essentially we are creating a linked-list of clusters tailored for this engine. It is better than the partitioning array because it does not only tells us about the cluster size it also gives us a way for merging clusters and to get at the nodes of the cluster. We differentiate between the nodes of the cluster and linked-clusters for performance and convenience. So in practice this translates to the pixel that belongs to the player at the head of the scanline is the cluster and whatever else that follows that belongs to the player are the nodes. So when we process data we are working on the clusters rather than the individual pixels. And last but not least, the use of the linked-list has been driven by performance considerations not just limited to fast cluster-merging but also traversal. We don't need to do lookups at random places instead we only need to traverse the clusters in their natural order and so we never hit the performance issue of linear search `O(n)`.
 
+### Week 2: Algorithmic Grouping
+
+This week has been mostly concerned with the core engineering task of exploring the problem space to design the cluster-merging algorithm. This week has been characterized by non-linear development, debugging, fixing, rewriting, and iterating on ideas based on a simplified data set.
+
 ## Build
 
 To obtain a development build use the following command-line string:
