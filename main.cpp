@@ -404,8 +404,21 @@ extern "C" void MergeSuperClusters(
 	}
 
 	// FIXME: assert that the cluster to be linked satisfies the id-ordering
+	int64_t ref_y = left->y;
 	if (left->y < right->y) {
-		while (right->y > left->y) {
+		while (left->y < right->y) {
+			left->super = id_super;
+			if (left->next == left->id) {
+				fprintf(stderr, "%s\n", "error: early end of 'left' super-cluster");
+				// XCloseDisplay(display);
+				_exit(1);
+			}
+			left = &clusters[left->next];
+		}
+		left->super = id_super;
+	}
+	else if (left->y > right->y) {
+		while (left->y > right->y) {
 			right->super = id_super;
 			if (right->next == right->id) {
 				fprintf(stderr, "%s\n", "error: early end of super-cluster");
@@ -416,21 +429,21 @@ extern "C" void MergeSuperClusters(
 		}
 		right->super = id_super;
 	}
-	else if (left->y > right->y) {
-		while (left->y > right->y) {
-			left->super = id_super;
-			if (left->next == left->id) {
-				fprintf(stderr, "%s\n", "error: early end of super-cluster");
-				// XCloseDisplay(display);
-				_exit(1);
-			}
-			left = &clusters[left->next];
-		}
-		left->super = id_super;
+
+	if (left->y != right->y) {
+		fprintf(stderr, "%s\n", "error: not on the same scanline traverse error");
+		// XCloseDisplay(display);
+		_exit(1);
+	}
+
+	if (right->x < left->x) {
+		iter = left;
+		left = right;
+		right = iter;
 	}
 
 	// NOTE: clusters are on the same scanline
-	int64_t ref_y = left->y;
+	ref_y = left->y;
 	if (left->prev == left->id) {
 		if (right->prev == right->id) {
 			struct cluster *prev_left = left;
