@@ -1023,7 +1023,7 @@ int main(int argc, char *argv[])
 	int64_t const depth = attributes.depth;
 	int64_t const all_event_masks = attributes.all_event_masks;
 	Visual *visual = attributes.visual;
-//	Screen *screen = attributes.screen;
+	Screen *screen = attributes.screen;
 
 	int64_t iters = 0;
 	int64_t red_shift = 0;
@@ -1575,24 +1575,6 @@ int main(int argc, char *argv[])
 		data = img->data;
 		memset(data, 0, bytes_frame);
 		int32_t *frame = (typeof(frame)) data;
-		Screen *screen = DefaultScreenOfDisplay(display);
-		Window window = XCreateSimpleWindow(
-			display,
-			DefaultRootWindow(display),
-			0,
-			0,
-			width,
-			height,
-			0,
-			BlackPixelOfScreen(screen),
-			BlackPixelOfScreen(screen)
-		);
-
-		XMapWindow(display, window);
-		XSetWindowAttributes attributes = {};
-		attributes.event_mask = ExposureMask;
-		XChangeWindowAttributes(display, window, CWEventMask, &attributes);
-		XEvent ev = {};
 		if (c->next != c->id) {
 			struct cluster const *iter = &clusters[c->next];
 			while (iter->next != iter->id) {
@@ -1614,7 +1596,6 @@ int main(int argc, char *argv[])
 				iter = &clusters[iter->next];
 			}
 			count += iter->size;
-			XWindowEvent(display, window, ExposureMask, &ev);
 			XPutImage(
 					display,
 					window,
@@ -1627,12 +1608,11 @@ int main(int argc, char *argv[])
 					width,
 					height
 				 );
-			XSync(display, False);
+			XSync(display, True);
 			char buff = 0;
 			fprintf(stdout, "%s\n", "press any key to continue");
 			fread(&buff, sizeof(buff), 1, stdin);
 		}
-		XDestroyWindow(display, window);
 		fprintf(stdout, "count: %ld\n", count);
 		fprintf(stdout, "event-masks: 0x%lx\n", all_event_masks & ExposureMask);
 	}
