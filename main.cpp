@@ -1021,7 +1021,9 @@ int main(int argc, char *argv[])
 	int64_t const width = attributes.width;
 	int64_t const height = attributes.height;
 	int64_t const depth = attributes.depth;
+	int64_t const all_event_masks = attributes.all_event_masks;
 	Visual *visual = attributes.visual;
+//	Screen *screen = attributes.screen;
 
 	int64_t iters = 0;
 	int64_t red_shift = 0;
@@ -1570,15 +1572,69 @@ int main(int argc, char *argv[])
 		int64_t const id = cl[0];
 		struct cluster const * const c = &clusters[id];
 		count += c->size;
+		data = img->data;
+		memset(data, 0, bytes_frame);
+		int32_t *frame = (typeof(frame)) data;
+		Screen *screen = DefaultScreenOfDisplay(display);
+		Window window = XCreateSimpleWindow(
+			display,
+			DefaultRootWindow(display),
+			0,
+			0,
+			width,
+			height,
+			0,
+			BlackPixelOfScreen(screen),
+			BlackPixelOfScreen(screen)
+		);
+
+		XMapWindow(display, window);
+		XSetWindowAttributes attributes = {};
+		attributes.event_mask = ExposureMask;
+		XChangeWindowAttributes(display, window, CWEventMask, &attributes);
+		XEvent ev = {};
 		if (c->next != c->id) {
 			struct cluster const *iter = &clusters[c->next];
 			while (iter->next != iter->id) {
+				int64_t const x = iter->x;
+				int64_t const y = iter->y;
+				int64_t const id = width * y + x;
+				int32_t const rgb = (0xff << green_shift);
+				frame[id] = rgb;
+				struct cluster *node = &clusters[iter->node];
+				while (node->node != node->root) {
+					int64_t const x = node->x;
+					int64_t const y = node->y;
+					int64_t const id = width * y + x;
+					int32_t const rgb = (0xff << green_shift);
+					frame[id] = rgb;
+					node = &clusters[node->node];
+				}
 				count += iter->size;
 				iter = &clusters[iter->next];
 			}
 			count += iter->size;
+			XWindowEvent(display, window, ExposureMask, &ev);
+			XPutImage(
+					display,
+					window,
+					DefaultGCOfScreen(screen),
+					img,
+					0,
+					0,
+					0,
+					0,
+					width,
+					height
+				 );
+			XSync(display, False);
+			char buff = 0;
+			fprintf(stdout, "%s\n", "press any key to continue");
+			fread(&buff, sizeof(buff), 1, stdin);
 		}
+		XDestroyWindow(display, window);
 		fprintf(stdout, "count: %ld\n", count);
+		fprintf(stdout, "event-masks: 0x%lx\n", all_event_masks & ExposureMask);
 	}
 
 	XCloseDisplay(display);
