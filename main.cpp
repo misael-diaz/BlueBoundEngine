@@ -285,6 +285,11 @@ extern "C" void MergeSuperClusters(
 		//XCloseDisplay(display);
 		_exit(1);
 	}
+	else if (curr->super == next->super) {
+		fprintf(stderr, "%s\n", "error: already merged yet we got called");
+		//XCloseDisplay(display);
+		_exit(1);
+	}
 	else if (next->x > x_u) {
 		return;
 	}
