@@ -27,10 +27,11 @@ extern "C" struct cluster {
 	int64_t next;
 	int64_t size;
 	int64_t super;
+	int64_t total;
 	int64_t id;
 	int64_t x;
 	int64_t y;
-	int64_t _pad[6];
+	int64_t _pad[5];
 };
 
 static_assert(128 == sizeof(struct cluster));
@@ -979,6 +980,7 @@ check_merge: {
 			     iter = &clusters[iter->next];
 			     next = &clusters[next->next];
 		     }
+
 		     return;
 	     }
 }
@@ -1039,7 +1041,6 @@ int main(int argc, char *argv[])
 	int64_t const width = attributes.width;
 	int64_t const height = attributes.height;
 	int64_t const depth = attributes.depth;
-	int64_t const all_event_masks = attributes.all_event_masks;
 	Visual *visual = attributes.visual;
 	Screen *screen = attributes.screen;
 
@@ -1181,6 +1182,7 @@ int main(int argc, char *argv[])
 			cluster->prev = id;
 			cluster->next = id;
 			cluster->super = -1;
+			cluster->total = 1;
 			cluster->size = 1;
 			cluster->id = id;
 			cluster->x = x;
@@ -1593,54 +1595,90 @@ int main(int argc, char *argv[])
 
 	fprintf(stdout, "nodes: %ld\n", nodes);
 
-	{
+	int64_t total_max = 1;
+	int64_t id_max = -1;
+	for (int64_t i = 0; i != clno; ++i) {
+		int64_t id = cl[i];
+		struct cluster *iter = &clusters[id];
+		if (-1 == iter->super) {
+			continue;
+		}
+		struct cluster *super = &clusters[iter->super];
+		if (super->super != super->id) {
+			fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		else if (super->prev != super->id) {
+			fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+
+		iter = super;
 		int64_t count = 0;
-		int64_t const id = cl[0];
-		struct cluster const * const c = &clusters[id];
-		count += c->size;
+		do {
+			count += iter->size;
+			iter = &clusters[iter->next];
+		} while (iter->next != iter->id);
+		super->total = count;
+
+		if (super->total > total_max) {
+			id_max = super->id;
+			total_max = super->total;
+		}
+	}
+
+	if (-1 == id_max) {
+		fprintf(stderr, "%s\n", "error: nonsensical super-clusters found");
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	{
 		data = img->data;
 		memset(data, 0, bytes_frame);
 		int32_t *frame = (typeof(frame)) data;
-		if (c->next != c->id) {
-			struct cluster const *iter = &clusters[c->next];
-			while (iter->next != iter->id) {
-				int64_t const x = iter->x;
-				int64_t const y = iter->y;
+		struct cluster const * const c = &clusters[id_max];
+		if (c->next == c->id) {
+			fprintf(stderr, "%s\n", "error: wrong super-cluster");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		struct cluster const *iter = &clusters[c->next];
+		while (iter->next != iter->id) {
+			int64_t const x = iter->x;
+			int64_t const y = iter->y;
+			int64_t const id = width * y + x;
+			int32_t const rgb = (0xff << green_shift);
+			frame[id] = rgb;
+			struct cluster *node = &clusters[iter->node];
+			while (node->node != node->root) {
+				int64_t const x = node->x;
+				int64_t const y = node->y;
 				int64_t const id = width * y + x;
 				int32_t const rgb = (0xff << green_shift);
 				frame[id] = rgb;
-				struct cluster *node = &clusters[iter->node];
-				while (node->node != node->root) {
-					int64_t const x = node->x;
-					int64_t const y = node->y;
-					int64_t const id = width * y + x;
-					int32_t const rgb = (0xff << green_shift);
-					frame[id] = rgb;
-					node = &clusters[node->node];
-				}
-				count += iter->size;
-				iter = &clusters[iter->next];
+				node = &clusters[node->node];
 			}
-			count += iter->size;
-			XPutImage(
-					display,
-					window,
-					DefaultGCOfScreen(screen),
-					img,
-					0,
-					0,
-					0,
-					0,
-					width,
-					height
-				 );
-			XSync(display, True);
-			char buff = 0;
-			fprintf(stdout, "%s\n", "press any key to continue");
-			fread(&buff, sizeof(buff), 1, stdin);
+			iter = &clusters[iter->next];
 		}
-		fprintf(stdout, "count: %ld\n", count);
-		fprintf(stdout, "event-masks: 0x%lx\n", all_event_masks & ExposureMask);
+		XPutImage(
+				display,
+				window,
+				DefaultGCOfScreen(screen),
+				img,
+				0,
+				0,
+				0,
+				0,
+				width,
+				height
+			 );
+		XSync(display, True);
+		char buff = 0;
+		fprintf(stdout, "%s\n", "press any key to continue");
+		fread(&buff, sizeof(buff), 1, stdin);
 	}
 
 	XCloseDisplay(display);
