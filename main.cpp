@@ -1521,7 +1521,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		int64_t const super = iter->super;
+		int64_t super = iter->super;
 		for (int64_t j = (i + 1); j != clno; ++j) {
 			int64_t const jj = cl[j];
 			struct cluster *next = &clusters[jj];
@@ -1561,6 +1561,14 @@ int main(int argc, char *argv[])
 			}
 			else if ((next->super != -1) && (next->super != super)) {
 				MergeSuperClusters(curr, next, clusters, super, x_l, x_u);
+				if (super != curr->super) {
+					if (curr->super != next->super) {
+						fprintf(stderr, "%s\n", "error: surprising merge logic flaw");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					super = curr->super;
+				}
 				continue;
 			}
 
