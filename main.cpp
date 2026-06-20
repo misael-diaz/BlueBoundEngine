@@ -7,14 +7,9 @@
 #include <X11/Xlib.h>
 #include <sys/mman.h>
 
-// TODO: check if you actually need the merge bitmask as you progress (unused still)
-#define BLUE_DIST_MERGE 256L
 #define BLUE_MASK_SONIC (1L << 0)
-#define BLUE_MASK_MERGE (1L << 1)
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) ((((r) >= 0x30) && ((r) < 0x60)) && (((g) >= 0x30) && ((g) < 0x60)) && (((b) >= 0x90) && ((b) <= 0xff)))
-#define Dist(x1, x2) (((x1) - (x2)) * ((x1) - (x2)))
-#define Merged(d) ((d) < BLUE_DIST_MERGE)
 
 typedef char unsigned byte_t;
 typedef int64_t CID;
