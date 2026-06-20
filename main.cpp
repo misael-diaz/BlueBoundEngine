@@ -593,7 +593,7 @@ extern "C" void MergeSuperClusters(
 			}
 		}
 		else {
-			// TODO in this case the `right` has a preceeding scanline
+			// NOTE: in this case the `right` has a preceeding scanline
 			struct cluster *prev_right = &clusters[right->prev];
 			prev_right->next = left->id;
 			left->prev = prev_right->id;
