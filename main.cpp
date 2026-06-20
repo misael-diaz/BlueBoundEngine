@@ -265,7 +265,6 @@ extern "C" void MergeSuperClusters(
 		int64_t const x_l,
 		int64_t const x_u
 ) {
-	// TODO: check the maskbits
 	if (-1 == superid) {
 		fprintf(stderr, "%s\n", "error: invalid input argument `superid`");
 		//XCloseDisplay(display);
@@ -283,6 +282,16 @@ extern "C" void MergeSuperClusters(
 	}
 	else if (curr->super == next->super) {
 		fprintf(stderr, "%s\n", "error: already merged yet we got called");
+		//XCloseDisplay(display);
+		_exit(1);
+	}
+	else if (BLUE_MASK_SONIC != curr->mask) {
+		fprintf(stderr, "%s\n", "error: 'curr' not a cluster, maskbit unset");
+		//XCloseDisplay(display);
+		_exit(1);
+	}
+	else if (BLUE_MASK_SONIC != next->mask) {
+		fprintf(stderr, "%s\n", "error: 'next' not a cluster, maskbit unset");
 		//XCloseDisplay(display);
 		_exit(1);
 	}
