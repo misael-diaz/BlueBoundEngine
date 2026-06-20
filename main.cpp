@@ -1087,8 +1087,8 @@ int main(int argc, char *argv[])
 	XGetWindowAttributes(display, GameWindow, &attributes);
 //	int const x = attributes.x;
 //	int const y = attributes.y;
-	int64_t const width = attributes.width;
-	int64_t const height = attributes.height;
+	int64_t width = attributes.width;
+	int64_t height = attributes.height;
 	Screen *screen = attributes.screen;
 
 	// plane mask tells that we care about all the bits that define color RRGGBB
