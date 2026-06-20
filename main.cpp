@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 
 #define BLUE_MASK_SONIC (1L << 0)
+// TODO: bound sonic at a fixed framerate
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) ((((r) >= 0x30) && ((r) < 0x60)) && (((g) >= 0x30) && ((g) < 0x60)) && (((b) >= 0x90) && ((b) <= 0xff)))
 
@@ -1093,8 +1094,6 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "red-shift: %ld\n", red_shift);
 	fprintf(stdout, "green-shift: %ld\n", green_shift);
 	fprintf(stdout, "blue-shift: %ld\n", blue_shift);
-
-	// TODO: bound sonic at a fixed framerate
 
 	// plane mask tells that we care about all the bits that define color RRGGBB
 	int const format = ZPixmap;
