@@ -1145,10 +1145,10 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "blue-shift: %ld\n", blue_shift);
 
 	char *data = img->data;
-	int64_t const pitch = img->bytes_per_line;
-	int64_t const pixels = (width * height);
-	int64_t const bytes_frame = (img->bits_per_pixel >> 3) * pixels;
-	int64_t const bytes_partition = bytes_frame;
+	int64_t pitch = img->bytes_per_line;
+	int64_t pixels = (width * height);
+	int64_t bytes_frame = (img->bits_per_pixel >> 3) * pixels;
+	int64_t bytes_partition = bytes_frame;
 	// even for 24-bit depth visuals images are usually stored with 32-bit padding
 	if (32 != img->bits_per_pixel) {
 		fprintf(stderr, "%s\n", "error: unexpected pixel depth");
@@ -1170,15 +1170,15 @@ int main(int argc, char *argv[])
 	int64_t const mask_page = (pagesz - 1);
 	struct cluster clust = {};
 	struct cluster *clusp = &clust;
-	int64_t const bytes_cluster_list = pixels * sizeof(CID);
-	int64_t const bytes_clusters = pixels * sizeof(*clusp);
-	int64_t const bytes_required = (
+	int64_t bytes_cluster_list = pixels * sizeof(CID);
+	int64_t bytes_clusters = pixels * sizeof(*clusp);
+	int64_t bytes_required = (
 			bytes_partition +
 			bytes_clusters +
 			bytes_cluster_list +
 			0
 	);
-	int64_t const bytes_mmap = (((bytes_required + mask_page) & (~mask_page)) << 1);
+	int64_t bytes_mmap = (((bytes_required + mask_page) & (~mask_page)) << 1);
 
 	errno = 0;
 	void *base = mmap(NULL, bytes_mmap, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
