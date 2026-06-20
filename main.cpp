@@ -926,10 +926,6 @@ extern "C" void MergeSuperClusters(
 
 	fprintf(stderr, "%s\n", "error: should never execute");
 	return;
-	// TODO:
-	// check ids
-	// check that the super data member points to the new one
-	// check that the cluster count matches the original distributed count
 check_merge: {
 		     // checks the cluster count and we have to initialize to 1 to account for the super-cluster itself
 		     count = 1;
