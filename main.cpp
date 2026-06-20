@@ -1203,6 +1203,8 @@ int main(int argc, char *argv[])
 		_exit(1);
 	}
 
+	// TODO: the original window dimensions are subject to change and so the offets must be dynamic: call signature: mremap(base, bytes_mmap, (bytes_mmap << 1), MREMAP_MAYMOVE);
+
 	// initializes the partition array for the clustering algorithm
 	int64_t const offset_partition = 0;
 	int64_t const offset_clusters = ((bytes_partition + 0x3f) & ~0x3f);
