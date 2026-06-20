@@ -1516,6 +1516,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	// TODO: if there's nothing to render we just show a black window
 	if (-1 == id_max) {
 		fprintf(stderr, "%s\n", "error: nonsensical super-clusters found");
 		XCloseDisplay(display);
