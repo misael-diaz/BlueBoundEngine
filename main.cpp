@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cerrno>
 #include <unistd.h>
+#include <time.h>
 #include <X11/Xlib.h>
 #include <sys/mman.h>
 
@@ -31,6 +32,50 @@ extern "C" struct cluster {
 };
 
 static_assert(128 == sizeof(struct cluster));
+
+extern "C" void LinuxSetTimeSpec(
+	struct timespec * const clock_time,
+	int64_t const nsec
+) {
+	clock_time->tv_sec  = (nsec / 1000000000);
+	clock_time->tv_nsec = (nsec % 1000000000);
+}
+
+extern "C" void LinuxSetDelayTime(
+	struct timespec * const clock_target,
+	struct timespec const * const clock_start,
+	struct timespec const * const clock_delta
+) {
+	clock_target->tv_sec = (
+		(clock_start->tv_sec + clock_delta->tv_sec) +
+		((clock_start->tv_nsec + clock_delta->tv_nsec) / 1000000000)
+	);
+	clock_target->tv_nsec = (
+		((clock_start->tv_nsec + clock_delta->tv_nsec) % 1000000000)
+	);
+}
+
+extern "C" void LinuxDelay(
+	clockid_t clock_id,
+	struct timespec const * const clock_target
+) {
+	int rc = 0;
+	if (CLOCK_MONOTONIC != clock_id) {
+		fprintf(stderr, "%s", "unsupported clock_id\n");
+		_exit(1);
+	}
+	do {
+		rc = clock_nanosleep(clock_id, TIMER_ABSTIME, clock_target, NULL);
+		if (EFAULT == rc) {
+			fprintf(stderr, "%s\n", "invalid address for nanosleep");
+			_exit(1);
+		} else if (EINVAL == rc) {
+			fprintf(stderr, "%s\n", "invalid timespec target value");
+			_exit(1);
+		}
+	} while (EINTR == rc);
+}
+
 
 // clusters (or groups) nodes that belong to Sonic
 extern "C" int Clustering(
