@@ -1311,7 +1311,6 @@ int main(int argc, char *argv[])
 	}
 	fprintf(stdout, "%s\n", "merging clusters");
 
-	// TODO: assert that cluster-iterators point to actual clusters and only point to nodes on edge-cases
 	for (int64_t i = 0; i != (clno - 1); ++i) {
 		int64_t const ii = cl[i];
 		struct cluster *curr = &clusters[ii];
@@ -1359,6 +1358,11 @@ int main(int argc, char *argv[])
 			}
 			else {
 				iter = &clusters[iter->node];
+				if (iter->root == iter->id) {
+					fprintf(stderr, "%s\n", "error: not a node");
+					XCloseDisplay(display);
+					_exit(1);
+				}
 				x_u = iter->x;
 			}
 		}
