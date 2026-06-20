@@ -1163,7 +1163,19 @@ int main(int argc, char *argv[])
 		((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
 	);
 	int32_t *part = (typeof(part)) (((byte_t*) base) + offset_partition);
+	if (((uintptr_t) part) & 63) {
+		fprintf(stderr, "%s\n", "error: array 'part' not 64-byte aligned");
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
 	struct cluster *clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
+	if (((uintptr_t) clusters) & 63) {
+		fprintf(stderr, "%s\n", "error: array 'clusters' not 64-byte aligned");
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
 	data = img->data;
 	// PERF: don't mind doing multiple passes on the framebuffer while writing experimental code so bear it with me
 	for (int64_t y = 0; y != height; ++y) {
@@ -1290,8 +1302,6 @@ int main(int argc, char *argv[])
 			_exit(1);
 		}
 	}
-
-	// TODO: check alignments of clusters, cluster_list, etc. (expect 64-byte align)
 
 	int64_t merges = 0;
 	if (clno < 2) {
