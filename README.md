@@ -5,7 +5,7 @@ Implements a deterministic, data-centric, Computer Vision Engine. Currently the 
 
 ### Backstory and Motivation
 
-During the Caribe Tech Hackathon I discovered that despite the rise of AI generated code there are developers that still have a genuine interest in learning how computers work. They are as eager to follow the latest trends in development with AI while having great interest to learn low-level programming.
+During the [Caribe Tech Hackathon](https://github.com/misael-diaz/CaribeTechArena-Hackathon-2026) I discovered that despite the rise of AI generated code there are developers that still have a genuine interest in learning how computers work. They are as eager to follow the latest trends in development with AI while having great interest to learn low-level programming.
 
 I was talking to one of the mentors of the event about game development and he talked about his experience in hackathons at a time where you are expected to write the code yourself. That eventually brought me to talk about my own game engine and he said that it would be nice if I could prepare a talk about interfacing low-level code written in C/C++ with Python. I gladly accepted the request to give a talk about that in the next local Python conference.
 
