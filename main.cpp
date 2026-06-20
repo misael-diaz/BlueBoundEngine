@@ -1258,7 +1258,9 @@ int main(int argc, char *argv[])
 	for (int64_t id = 0; id != pixels; ++id) {
 		struct cluster const * const cluster = &clusters[id];
 		if (BLUE_MASK_SONIC != cluster->mask) {
-			continue;
+			fprintf(stderr, "%s\n", "error: not a cluster, maskbit unset");
+			XCloseDisplay(display);
+			_exit(1);
 		}
 		else if (cluster->size <= 1) {
 			continue;
