@@ -16,6 +16,8 @@
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) ((((r) >= 0x30) && ((r) < 0x60)) && (((g) >= 0x30) && ((g) < 0x60)) && (((b) >= 0x90) && ((b) <= 0xff)))
 
+#define KBD_ESC XKeysymToKeycode(display, XK_Escape)
+
 typedef char unsigned byte_t;
 typedef int64_t CID;
 
@@ -1089,13 +1091,39 @@ int main(int argc, char *argv[])
 //	int const y = attributes.y;
 	int64_t width = attributes.width;
 	int64_t height = attributes.height;
-	Screen *screen = attributes.screen;
+//	Screen *screen = attributes.screen;
 
 	// plane mask tells that we care about all the bits that define color RRGGBB
 	int const format = ZPixmap;
 	int64_t const plane_mask = 0xffffff;
 	XImage *img = XGetImage(display, GameWindow, 0, 0, width, height, plane_mask, format);
 	int64_t const depth = img->depth;
+
+	XSetWindowAttributes OutputWindowAttributes = {};
+	OutputWindowAttributes.event_mask = (
+		ExposureMask |
+		KeyPressMask |
+		0
+	);
+
+	Window OutputWindow = XCreateWindow(
+		display,
+		DefaultRootWindow(display),
+		0,
+		0,
+		width,
+		height,
+		0,
+		depth,
+		InputOutput,
+		DefaultVisualOfScreen(DefaultScreenOfDisplay(display)),
+		CWEventMask,
+		&OutputWindowAttributes
+	);
+
+	XEvent ev = {};
+	XMapWindow(display, OutputWindow);
+	XWindowEvent(display, OutputWindow, ExposureMask, &ev);
 
 	int64_t iters = 0;
 	int64_t red_shift = 0;
@@ -1603,8 +1631,8 @@ int main(int argc, char *argv[])
 		}
 		XPutImage(
 				display,
-				GameWindow,
-				DefaultGCOfScreen(screen),
+				OutputWindow,
+				DefaultGCOfScreen(DefaultScreenOfDisplay(display)),
 				img,
 				0,
 				0,
@@ -1619,6 +1647,7 @@ int main(int argc, char *argv[])
 		fread(&buff, sizeof(buff), 1, stdin);
 	}
 
+	XDestroyWindow(display, OutputWindow);
 	XCloseDisplay(display);
 	return 0;
 }
