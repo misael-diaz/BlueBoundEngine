@@ -1041,18 +1041,22 @@ int main(int argc, char *argv[])
 //	int const y = attributes.y;
 	int64_t const width = attributes.width;
 	int64_t const height = attributes.height;
-	int64_t const depth = attributes.depth;
-	Visual *visual = attributes.visual;
 	Screen *screen = attributes.screen;
+
+	// plane mask tells that we care about all the bits that define color RRGGBB
+	int const format = ZPixmap;
+	int64_t const plane_mask = 0xffffff;
+	XImage *img = XGetImage(display, window, 0, 0, width, height, plane_mask, format);
+	int64_t const depth = img->depth;
 
 	int64_t iters = 0;
 	int64_t red_shift = 0;
 	int64_t green_shift = 0;
 	int64_t blue_shift = 0;
 	int64_t const rgb_mask = 0xff;
-	int64_t const red_mask = visual->red_mask;
-	int64_t const green_mask = visual->green_mask;
-	int64_t const blue_mask = visual->blue_mask;
+	int64_t const red_mask = img->red_mask;
+	int64_t const green_mask = img->green_mask;
+	int64_t const blue_mask = img->blue_mask;
 	while ((rgb_mask << red_shift) != red_mask) {
 		red_shift += 8LU;
 		if (iters > 2) {
@@ -1088,17 +1092,12 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "width: %ld\n", width);
 	fprintf(stdout, "height: %ld\n", height);
 	fprintf(stdout, "depth: %ld\n", depth);
-	fprintf(stdout, "red-mask: %ld\n", visual->red_mask);
-	fprintf(stdout, "green-mask: %ld\n", visual->green_mask);
-	fprintf(stdout, "blue-mask: %ld\n", visual->blue_mask);
+	fprintf(stdout, "red-mask: %ld\n", red_mask);
+	fprintf(stdout, "green-mask: %ld\n", green_mask);
+	fprintf(stdout, "blue-mask: %ld\n", blue_mask);
 	fprintf(stdout, "red-shift: %ld\n", red_shift);
 	fprintf(stdout, "green-shift: %ld\n", green_shift);
 	fprintf(stdout, "blue-shift: %ld\n", blue_shift);
-
-	// plane mask tells that we care about all the bits that define color RRGGBB
-	int const format = ZPixmap;
-	int64_t const plane_mask = 0xffffff;
-	XImage *img = XGetImage(display, window, 0, 0, width, height, plane_mask, format);
 
 	char *data = img->data;
 	int64_t const pitch = img->bytes_per_line;
