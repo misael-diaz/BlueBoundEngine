@@ -41,6 +41,8 @@ This week has been mostly concerned with the core engineering task of exploring 
 - **sonic detection**: have successfully detected some of the pixels that belong to sonic while excluding the background and so the engine is getting closer to the goal of doing this in real-time. Having the code process a sonic image has enabled me to address new edge-cases such as needed to swap the `left` and `right` iterators when the iterators reach the common scanline between them. If we don't the merge fails because the id ordering (smallest to largest) is not realized. The defensive programming that the code already had enabled me to tackle this problem quickly.
 - **currently rewriting**: the logic that handles the merge of a cluster in a scanline is under undergoing revision. This part of the algorithm was written before I introduce the `super` data member that stores the id of the super-cluster and so any links made between them would cause problems later on because `super` is uninitialized. This is why the computation has been disabled. At least I know that the merge between scanlines (harder to get right) is working.
 
+[![DetectsSonic](https://img.youtube.com/vi/EGqeIvFt7kY/hqdefault.jpg)](https://youtu.be/EGqeIvFt7kY)
+
 ## Build
 
 To obtain a development build use the following command-line string:
