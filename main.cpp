@@ -1421,8 +1421,6 @@ int main(int argc, char *argv[])
 				break;
 			}
 			else if (next->root != next->id) {
-				// FIXME: by skipping the nodes (strictly looking at the clusters) the algorithm misses merging opportunities
-				// STATUS: for now going to explore as much as possible landing on the clusters rather than the nodes
 				continue;
 			}
 			else if (BLUE_MASK_SONIC != next->mask) {
