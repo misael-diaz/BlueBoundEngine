@@ -1045,14 +1045,14 @@ int main(int argc, char *argv[])
 		_exit(1);
 	}
 
-	Window window = 0;
+	Window GameWindow = 0;
 	// gets the window resource ID from the command-line 
 	for (int i = 0; i != argc; ++i) {
 		if (!strcmp(argv[i], "--window")) {
 
 			errno = 0;
 			char *endptr = NULL;
-			window = strtol(argv[i + 1], &endptr, 10);
+			GameWindow = strtol(argv[i + 1], &endptr, 10);
 			if (!endptr) {
 				fprintf(stderr, "%s\n", "error: unexpected conversion error");
 				if (errno) {
@@ -1068,7 +1068,7 @@ int main(int argc, char *argv[])
 				_exit(1);
 			}
 
-			if (!window) {
+			if (!GameWindow) {
 				fprintf(stderr, "%s\n", "error: invalid window id");
 				_exit(1);
 			}
@@ -1084,7 +1084,7 @@ int main(int argc, char *argv[])
 	}
 
 	XWindowAttributes attributes = {};
-	XGetWindowAttributes(display, window, &attributes);
+	XGetWindowAttributes(display, GameWindow, &attributes);
 //	int const x = attributes.x;
 //	int const y = attributes.y;
 	int64_t const width = attributes.width;
@@ -1094,7 +1094,7 @@ int main(int argc, char *argv[])
 	// plane mask tells that we care about all the bits that define color RRGGBB
 	int const format = ZPixmap;
 	int64_t const plane_mask = 0xffffff;
-	XImage *img = XGetImage(display, window, 0, 0, width, height, plane_mask, format);
+	XImage *img = XGetImage(display, GameWindow, 0, 0, width, height, plane_mask, format);
 	int64_t const depth = img->depth;
 
 	int64_t iters = 0;
@@ -1603,7 +1603,7 @@ int main(int argc, char *argv[])
 		}
 		XPutImage(
 				display,
-				window,
+				GameWindow,
 				DefaultGCOfScreen(screen),
 				img,
 				0,
