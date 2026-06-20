@@ -1218,6 +1218,11 @@ int main(int argc, char *argv[])
 
 	int64_t clno = 0;
 	CID *cl = (typeof(cl)) (((byte_t*) base) + offset_cluster_list);
+	if (((uintptr_t) cl) & 63) {
+		fprintf(stderr, "%s\n", "error: array 'cl' not 64-byte aligned");
+		XCloseDisplay(display);
+		_exit(1);
+	}
 	memset(cl, 0, bytes_cluster_list);
 	// links nodes of constant y-striped clusters
 	for (int64_t i = 0; i != pixels; ++i) {
