@@ -1094,6 +1094,21 @@ int main(int argc, char *argv[])
 	int64_t height = attributes.height;
 //	Screen *screen = attributes.screen;
 
+	XSizeHints *SizeHintsGameWindow = XAllocSizeHints();
+	if (!SizeHintsGameWindow) {
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	// NOTES: fixes the game window dimensions so that we can do our work without defensive programming for handling dimension changes; in practice we don't want to change the game dimensions when we call this engine and so this guarantees that
+	SizeHintsGameWindow->flags = (PMinSize | PMaxSize);
+	SizeHintsGameWindow->min_width = width;
+	SizeHintsGameWindow->max_width = width;
+	SizeHintsGameWindow->min_height = height;
+	SizeHintsGameWindow->max_height = height;
+	XSetWMNormalHints(display, GameWindow, SizeHintsGameWindow);
+	XSync(display, False);
+
 	// plane mask tells that we care about all the bits that define color RRGGBB
 	int const format = ZPixmap;
 	int64_t const plane_mask = 0xffffff;
@@ -1278,9 +1293,9 @@ int main(int argc, char *argv[])
 				      (width != ev.xconfigure.width) ||
 				      (height != ev.xconfigure.height)
 				 ) {
-					width = ev.xconfigure.width;
-					height = ev.xconfigure.height;
-					pixels = (width * height);
+					int64_t width_new = ev.xconfigure.width;
+					int64_t height_new = ev.xconfigure.height;
+					pixels = (width_new * height_new);
 					bytes_frame = (img->bits_per_pixel >> 3) * pixels;
 					bytes_partition = bytes_frame;
 					bytes_cluster_list = pixels * sizeof(CID);
@@ -1306,6 +1321,7 @@ int main(int argc, char *argv[])
 				if (KBD_ESC == ev.xkey.keycode) {
 					fprintf(stdout, "%s\n", "quitting upon user request");
 					XFree(SizeHints);
+					XFree(SizeHintsGameWindow);
 					XDestroyWindow(display, OutputWindow);
 					XCloseDisplay(display);
 					_exit(0);
@@ -1713,6 +1729,7 @@ int main(int argc, char *argv[])
 	}
 
 	XFree(SizeHints);
+	XFree(SizeHintsGameWindow);
 	XDestroyWindow(display, OutputWindow);
 	XCloseDisplay(display);
 	return 0;
