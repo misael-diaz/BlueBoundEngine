@@ -1150,6 +1150,7 @@ int main(int argc, char *argv[])
 	SizeHints->min_width = width;
 	SizeHints->min_height = height;
 	XSetWMNormalHints(display, OutputWindow, SizeHints);
+	XStoreName(display, OutputWindow, "Handcrafted Blue Computer Vision Engine");
 
 	XEvent ev = {};
 	XMapWindow(display, OutputWindow);
