@@ -12,6 +12,7 @@
 #include <X11/Xutil.h>
 #include <sys/mman.h>
 
+#define BLUE_FPS_TARGET 30.0f
 #define BLUE_MASK_SONIC (1L << 0)
 // TODO: bound sonic at a fixed framerate
 // TODO: consider working with a packed RGB parameter instead
@@ -59,6 +60,38 @@ extern "C" void LinuxSetDelayTime(
 	clock_target->tv_nsec = (
 		((clock_start->tv_nsec + clock_delta->tv_nsec) % 1000000000)
 	);
+}
+
+extern "C" void LinuxDiffTimeSpec(
+	struct timespec * const clock_delta,
+	struct timespec const * const clock_start,
+	struct timespec const * const clock_end
+) {
+	int64_t nsec_diff = 0;
+	int64_t const nsec_start = 1000000000 * clock_start->tv_sec + clock_start->tv_nsec;
+	int64_t const nsec_end   = 1000000000 *   clock_end->tv_sec +   clock_end->tv_nsec;
+	if (nsec_end > nsec_start) {
+		nsec_diff = (nsec_end - nsec_start);
+	} else {
+		nsec_diff = (nsec_start - nsec_end);
+	}
+	clock_delta->tv_sec  = (nsec_diff / 1000000000);
+	clock_delta->tv_nsec = (nsec_diff % 1000000000);
+}
+
+extern "C" void LinuxCSumTimeSpec(
+	struct timespec * const clock_csum,
+	struct timespec const * const clock_delta
+) {
+	int64_t const sec = (
+		(clock_csum->tv_sec  + clock_delta->tv_sec) +
+		((clock_csum->tv_nsec + clock_delta->tv_nsec) / 1000000000)
+	);
+	int64_t const nsec = (
+		((clock_csum->tv_nsec + clock_delta->tv_nsec) % 1000000000)
+	);
+	clock_csum->tv_sec = sec;
+	clock_csum->tv_nsec = nsec;
 }
 
 extern "C" void LinuxDelay(
@@ -1285,7 +1318,20 @@ int main(int argc, char *argv[])
 		_exit(1);
 	}
 
+	float constexpr FPSFloat = BLUE_FPS_TARGET;
+	float constexpr FPSInvFloat = 1.0e9f / FPSFloat;
+	int64_t constexpr FrameDurationTargetNanoSec = FPSInvFloat;
+	struct timespec start = {};
+	struct timespec end = {};
+	struct timespec etime = {};
+	struct timespec delta = {};
+	struct timespec sleep = {};
+	struct timespec target = {};
+	LinuxSetTimeSpec(&target, FrameDurationTargetNanoSec);
+
+	int64_t frameno = 0;
 	while (1) {
+		clock_gettime(CLOCK_MONOTONIC, &start);
 		while (XPending(display)) {
 			XNextEvent(display, &ev);
 			switch (ev.type) {
@@ -1333,6 +1379,25 @@ int main(int argc, char *argv[])
 			}
 			}
 		}
+
+		if (frameno & 256) {
+			frameno = 0;
+			// NOTE: elapsed time has data up to the previous frame so 255
+			float sec = etime.tv_sec + 1.0e-9 * etime.tv_nsec;
+			float FPSAvg = 255.0f / sec;
+			etime.tv_sec = 0;
+			etime.tv_nsec = 0;
+			fprintf(stdout, "FPS: %.1f\n", FPSAvg);
+		}
+		else {
+			++frameno;
+		}
+		LinuxSetDelayTime(&sleep, &start, &target);
+		LinuxDelay(CLOCK_MONOTONIC, &sleep);
+		// NOTE: we are assuming that this timing computations are inexpensive
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		LinuxDiffTimeSpec(&delta, &start, &end);
+		LinuxCSumTimeSpec(&etime, &delta);
 	}
 
 	data = img->data;
