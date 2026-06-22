@@ -1296,12 +1296,10 @@ int main(int argc, char *argv[])
 		_exit(1);
 	}
 
-	// TODO: the original window dimensions are subject to change and so the offets must be dynamic: call signature: mremap(base, bytes_mmap, (bytes_mmap << 1), MREMAP_MAYMOVE);
-
 	// initializes the partition array for the clustering algorithm
-	int64_t const offset_partition = 0;
-	int64_t const offset_clusters = ((bytes_partition + 0x3f) & ~0x3f);
-	int64_t const offset_cluster_list = (
+	int64_t offset_partition = 0;
+	int64_t offset_clusters = ((bytes_partition + 0x3f) & ~0x3f);
+	int64_t offset_cluster_list = (
 		((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
 	);
 	int32_t *part = (typeof(part)) (((byte_t*) base) + offset_partition);
@@ -1336,10 +1334,10 @@ int main(int argc, char *argv[])
 			XNextEvent(display, &ev);
 			switch (ev.type) {
 			case ConfigureNotify: {
-			      if (
+				if (
 				      (width != ev.xconfigure.width) ||
 				      (height != ev.xconfigure.height)
-				 ) {
+				   ) {
 					int64_t width_new = ev.xconfigure.width;
 					int64_t height_new = ev.xconfigure.height;
 					pixels = (width_new * height_new);
@@ -1358,10 +1356,28 @@ int main(int argc, char *argv[])
 						(~mask_page)
 					);
 
-					if (bytes_aligned > bytes_mmap) {
+					if ((bytes_aligned + pagesz) > bytes_mmap) {
+						errno = 0;
+						base = mremap(base, bytes_mmap, (bytes_mmap << 1), MREMAP_MAYMOVE);
+						if (MAP_FAILED == base) {
+							fprintf(stderr, "%s\n", "error: mremap failed");
+							if (errno) {
+								fprintf(stderr, "%s\n", strerror(errno));
+							}
+							XFree(SizeHints);
+							XFree(SizeHintsGameWindow);
+							XDestroyWindow(display, OutputWindow);
+							XCloseDisplay(display);
+							_exit(1);
+						}
+						bytes_mmap <<= 1;
 					}
-					// TODO: NO MATTER WHAT WE MUST RECALCULATE OFFSETS
-			      }
+					offset_partition = 0;
+					offset_clusters = ((bytes_partition + 0x3f) & ~0x3f);
+					offset_cluster_list = (
+						((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
+					);
+				}
 			}
 			break;
 			case KeyPress: {
