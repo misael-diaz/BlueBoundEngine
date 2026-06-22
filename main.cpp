@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <sys/mman.h>
 
 #define BLUE_MASK_SONIC (1L << 0)
@@ -1102,6 +1103,7 @@ int main(int argc, char *argv[])
 	XSetWindowAttributes OutputWindowAttributes = {};
 	OutputWindowAttributes.event_mask = (
 		ExposureMask |
+		StructureNotifyMask |
 		KeyPressMask |
 		0
 	);
@@ -1120,6 +1122,19 @@ int main(int argc, char *argv[])
 		CWEventMask,
 		&OutputWindowAttributes
 	);
+
+	XSizeHints *SizeHints = XAllocSizeHints();
+	if (!SizeHints) {
+		fprintf(stderr, "%s\n", "error; XSizeHints allocation failed");
+		XDestroyWindow(display, OutputWindow);
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	SizeHints->flags = PMinSize;
+	SizeHints->min_width = width;
+	SizeHints->min_height = height;
+	XSetWMNormalHints(display, OutputWindow, SizeHints);
 
 	XEvent ev = {};
 	XMapWindow(display, OutputWindow);
@@ -1209,7 +1224,8 @@ int main(int argc, char *argv[])
 			bytes_cluster_list +
 			0
 	);
-	int64_t bytes_mmap = (((bytes_required + mask_page) & (~mask_page)) << 1);
+	int64_t bytes_aligned = (((bytes_required + mask_page) & (~mask_page)) << 1);
+	int64_t bytes_mmap = bytes_aligned;
 
 	errno = 0;
 	void *base = mmap(NULL, bytes_mmap, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -1251,6 +1267,55 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s\n", "error: array 'clusters' not 64-byte aligned");
 		XCloseDisplay(display);
 		_exit(1);
+	}
+
+	while (1) {
+		while (XPending(display)) {
+			XNextEvent(display, &ev);
+			switch (ev.type) {
+			case ConfigureNotify: {
+			      if (
+				      (width != ev.xconfigure.width) ||
+				      (height != ev.xconfigure.height)
+				 ) {
+					width = ev.xconfigure.width;
+					height = ev.xconfigure.height;
+					pixels = (width * height);
+					bytes_frame = (img->bits_per_pixel >> 3) * pixels;
+					bytes_partition = bytes_frame;
+					bytes_cluster_list = pixels * sizeof(CID);
+					bytes_clusters = pixels * sizeof(*clusp);
+					bytes_required = (
+						bytes_partition +
+						bytes_clusters +
+						bytes_cluster_list +
+						0
+					);
+					bytes_aligned = (
+						(bytes_required + mask_page) &
+						(~mask_page)
+					);
+
+					if (bytes_aligned > bytes_mmap) {
+					}
+					// TODO: NO MATTER WHAT WE MUST RECALCULATE OFFSETS
+			      }
+			}
+			break;
+			case KeyPress: {
+				if (KBD_ESC == ev.xkey.keycode) {
+					fprintf(stdout, "%s\n", "quitting upon user request");
+					XFree(SizeHints);
+					XDestroyWindow(display, OutputWindow);
+					XCloseDisplay(display);
+					_exit(0);
+				}
+			}
+			break;
+			default: {
+			}
+			}
+		}
 	}
 
 	data = img->data;
@@ -1647,6 +1712,7 @@ int main(int argc, char *argv[])
 		fread(&buff, sizeof(buff), 1, stdin);
 	}
 
+	XFree(SizeHints);
 	XDestroyWindow(display, OutputWindow);
 	XCloseDisplay(display);
 	return 0;
