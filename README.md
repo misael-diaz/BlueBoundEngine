@@ -44,6 +44,12 @@ https://youtu.be/0rTqrAbqRI8
 [![DetectsSonic](https://img.youtube.com/vi/EGqeIvFt7kY/hqdefault.jpg)](https://youtu.be/EGqeIvFt7kY)
 - **currently rewriting**: the logic that handles the merge of a cluster in a scanline is under undergoing revision. This part of the algorithm was written before I introduce the `super` data member that stores the id of the super-cluster and so any links made between them would cause problems later on because `super` is uninitialized. This is why the computation has been disabled. At least I know that the merge between scanlines (harder to get right) is working.
 
+### Week 3: Real-Time Tracking
+
+Have succeeded in tracking the player real-time, the engine does not crash, does not leak memory, and runs at roughly 10 FPS. Not great though there are obvious performance considerations that should be considered. However profiling will tell where the performance bottlenecks are.
+
+[![RealTimeTracking](https://img.youtube.com/vi/fZFzrHi46N8/hqdefault.jpg)](https://youtu.be/fZFzrHi46N8)
+
 ## Build
 
 To obtain a development build use the following command-line string:
