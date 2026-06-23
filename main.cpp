@@ -1148,7 +1148,9 @@ int main(int argc, char *argv[])
 	XImage *img = XGetImage(display, GameWindow, 0, 0, width, height, plane_mask, format);
 	int64_t const depth = img->depth;
 
+	Screen *screen = DefaultScreenOfDisplay(display);
 	XSetWindowAttributes OutputWindowAttributes = {};
+	OutputWindowAttributes.background_pixel = BlackPixelOfScreen(screen);
 	OutputWindowAttributes.event_mask = (
 		ExposureMask |
 		StructureNotifyMask |
@@ -1167,7 +1169,7 @@ int main(int argc, char *argv[])
 		depth,
 		InputOutput,
 		DefaultVisualOfScreen(DefaultScreenOfDisplay(display)),
-		CWEventMask,
+		CWBackPixel | CWEventMask,
 		&OutputWindowAttributes
 	);
 
@@ -1379,6 +1381,7 @@ int main(int argc, char *argv[])
 						((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
 					);
 				}
+				XClearWindow(display, OutputWindow);
 			}
 			break;
 			case KeyPress: {
