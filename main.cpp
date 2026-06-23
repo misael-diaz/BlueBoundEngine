@@ -1123,8 +1123,8 @@ int main(int argc, char *argv[])
 	XGetWindowAttributes(display, GameWindow, &attributes);
 //	int const x = attributes.x;
 //	int const y = attributes.y;
-	int64_t width = attributes.width;
-	int64_t height = attributes.height;
+	int64_t const width = attributes.width;
+	int64_t const height = attributes.height;
 //	Screen *screen = attributes.screen;
 
 	XSizeHints *SizeHintsGameWindow = XAllocSizeHints();
@@ -1242,7 +1242,8 @@ int main(int argc, char *argv[])
 	char *data = img->data;
 	int64_t pitch = img->bytes_per_line;
 	int64_t pixels = (width * height);
-	int64_t bytes_frame = (img->bits_per_pixel >> 3) * pixels;
+	int64_t const bytes_per_pixel = (img->bits_per_pixel >> 3);
+	int64_t bytes_frame = bytes_per_pixel * pixels;
 	int64_t bytes_partition = bytes_frame;
 	// even for 24-bit depth visuals images are usually stored with 32-bit padding
 	if (32 != img->bits_per_pixel) {
@@ -1341,7 +1342,7 @@ int main(int argc, char *argv[])
 					int64_t width_new = ev.xconfigure.width;
 					int64_t height_new = ev.xconfigure.height;
 					pixels = (width_new * height_new);
-					bytes_frame = (img->bits_per_pixel >> 3) * pixels;
+					bytes_frame = bytes_per_pixel * pixels;
 					bytes_partition = bytes_frame;
 					bytes_cluster_list = pixels * sizeof(CID);
 					bytes_clusters = pixels * sizeof(*clusp);
@@ -1396,6 +1397,388 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		XDestroyImage(img);
+		img = XGetImage(display, GameWindow, 0, 0, width, height, plane_mask, format);
+
+		memset(base, 0, bytes_mmap);
+
+		data = img->data;
+		clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
+		if (((uintptr_t) clusters) & 63) {
+			fprintf(stderr, "%s\n", "error: array 'clusters' not 64-byte aligned");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		for (int64_t y = 0; y != height; ++y) {
+			int32_t *frame = (int32_t*) data;
+			for (int64_t x = 0; x != width; ++x) {
+				int64_t id = width * y + x;
+				struct cluster *cluster = &clusters[id];
+				int32_t const rgb = frame[x];
+				int64_t const r = ((red_mask & rgb) >> red_shift);
+				int64_t const g = ((green_mask & rgb) >> green_shift);
+				int64_t const b = ((blue_mask & rgb) >> blue_shift);
+				cluster->mask = ((Blue(r, g, b))? BLUE_MASK_SONIC : 0);
+				cluster->root = id;
+				cluster->node = id;
+				cluster->prev = id;
+				cluster->next = id;
+				cluster->super = -1;
+				cluster->total = 1;
+				cluster->size = 1;
+				cluster->id = id;
+				cluster->x = x;
+				cluster->y = y;
+			}
+			data += pitch;
+		}
+
+		data = img->data;
+		part = (typeof(part)) (((byte_t*) base) + offset_partition);
+		if (((uintptr_t) part) & 63) {
+			fprintf(stderr, "%s\n", "error: array 'part' not 64-byte aligned");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+
+		memset(part, 0xff, bytes_partition);
+		for (int64_t y = 0; y != height; ++y) {
+			int32_t *frame = (int32_t*) data;
+			for (int64_t x = 0; x != width; ++x) {
+				rc = Clustering(
+						part,
+						frame,
+						red_mask,
+						green_mask,
+						blue_mask,
+						red_shift,
+						green_shift,
+						blue_shift,
+						width,
+						x,
+						y
+					       );
+				if (-1 == rc) {
+					XCloseDisplay(display);
+					_exit(1);
+				}
+			}
+			data += pitch;
+		}
+
+		int64_t clno = 0;
+		CID *cl = (typeof(cl)) (((byte_t*) base) + offset_cluster_list);
+		if (((uintptr_t) cl) & 63) {
+			fprintf(stderr, "%s\n", "error: array 'cl' not 64-byte aligned");
+			XCloseDisplay(display);
+			_exit(1);
+		}
+		memset(cl, 0, bytes_cluster_list);
+
+		// links nodes of constant y-striped clusters
+		for (int64_t i = 0; i != pixels; ++i) {
+			struct cluster *cluster = &clusters[i];
+			if ((BLUE_MASK_SONIC == cluster->mask) && (part[i] < 0)) {
+				cluster->size = -(part[i]);
+				int64_t const childno = (cluster->size - 1);
+				cluster->node = (i + childno);
+				for (int64_t j = 0; j != childno; ++j) {
+					int64_t id = ((i + 1) + (childno - 1) - j);
+					if (part[id] != i) {
+						fprintf(stderr, "%s\n", "error: part");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					struct cluster *child = &clusters[id];
+					if (BLUE_MASK_SONIC != child->mask) {
+						fprintf(stderr, "%s\n", "error: unexpected partition error");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					child->size = 0;
+					child->node = (id - 1);
+					child->root = i;
+				}
+				if ((1 == cluster->size) && (cluster->node != cluster->id)) {
+					fprintf(stderr, "%s\n", "error: unexpected clustering error");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				cl[clno] = i;
+				++clno;
+			}
+		}
+
+		// check the links of the constant y-striped clusters
+		for (int64_t id = 0; id != pixels; ++id) {
+			struct cluster const * const cluster = &clusters[id];
+			if (BLUE_MASK_SONIC != cluster->mask) {
+				continue;
+			}
+			else if (cluster->size <= 1) {
+				continue;
+			}
+			int64_t count = 1;
+			struct cluster const * child = &clusters[cluster->node];
+			int64_t const childno = (cluster->size - 1);
+			while (child->node != id) {
+				child = &clusters[child->node];
+				if (child->y != cluster->y) {
+					fprintf(stderr, "%s\n", "error: striping");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				if (count >= childno) {
+					fprintf(stderr, "%s\n", "error: clustering");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				++count;
+			}
+			if (count != childno) {
+				fprintf(stderr, "%s\n", "error: cluster-list");
+				XCloseDisplay(display);
+				_exit(1);
+			}
+		}
+
+		if (clno > 2) {
+			for (int64_t i = 0; i != (clno - 1); ++i) {
+				int64_t const ii = cl[i];
+				struct cluster *curr = &clusters[ii];
+				if (curr->root != curr->id) {
+					fprintf(stderr, "%s\n", "error: not a cluster");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				else if (BLUE_MASK_SONIC != curr->mask) {
+					fprintf(stderr, "%s\n", "error: mask");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+
+				int64_t const x_l = curr->x;
+				int64_t x_u = curr->x;
+				if (
+						(curr->next != curr->id) &&
+						(curr->y == clusters[curr->next].y)
+				   ) {
+					struct cluster const *iter = &clusters[curr->next];
+					struct cluster const *prev = &clusters[curr->next];
+					while ((iter->y == curr->y) && (iter->next != iter->id)) {
+						if (BLUE_MASK_SONIC != iter->mask) {
+							fprintf(stderr, "%s\n", "error: mask");
+							XCloseDisplay(display);
+							_exit(1);
+						}
+						prev = iter;
+						iter = &clusters[iter->next];
+					}
+
+					if (iter->y != curr->y) {
+						iter = prev;
+					}
+
+					if (iter->y != curr->y) {
+						fprintf(stderr, "%s\n", "error: not on the same scanline");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+
+					if (1 == iter->size) {
+						x_u = iter->x;
+					}
+					else {
+						iter = &clusters[iter->node];
+						if (iter->root == iter->id) {
+							fprintf(stderr, "%s\n", "error: not a node");
+							XCloseDisplay(display);
+							_exit(1);
+						}
+						x_u = iter->x;
+					}
+				}
+				else if (1 == curr->size) {
+					continue;
+				}
+				else if (curr->size > 1) {
+					// NOTE using the redundant logic expression for readability
+					struct cluster const * const node = &clusters[curr->node];
+					if (BLUE_MASK_SONIC != node->mask) {
+						fprintf(stderr, "%s\n", "error: mask");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					x_u = node->x;
+				}
+
+				if (x_l == x_u) {
+					fprintf(stderr, "%s\n", "error: traversal logic");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				else if (x_l >= x_u) {
+					fprintf(stderr, "%s\n", "error: serious implementation flaw");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+
+				// initially marks ordinary clusters into super-clusters
+				struct cluster *iter = &clusters[curr->id];
+				if (-1 == iter->super) {
+					while (iter->prev != iter->id) {
+						iter = &clusters[iter->prev];
+					}
+					iter->super = iter->id;
+				}
+				else {
+					iter = &clusters[iter->super];
+					if (iter->prev != iter->id) {
+						fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					else if (iter->super != iter->id) {
+						fprintf(stderr, "%s\n", "error: unexpected error not a super cluster by id");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+				}
+
+				int64_t super = iter->super;
+				for (int64_t j = (i + 1); j != clno; ++j) {
+					int64_t const jj = cl[j];
+					struct cluster *next = &clusters[jj];
+					if (0 == next->size) {
+						fprintf(stderr, "%s\n", "surprising landing on node");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					else if (next->root != next->id) {
+						fprintf(stderr, "%s\n", "error: not a cluster");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					else if (BLUE_MASK_SONIC != next->mask) {
+						fprintf(stderr, "%s\n", "error: mask");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					else if (next->y == curr->y) {
+						continue;
+					}
+					else if ((next->y - curr->y) > 1) {
+						break;
+					}
+					else if (next->root != next->id) {
+						continue;
+					}
+					else if (BLUE_MASK_SONIC != next->mask) {
+						fprintf(stderr, "%s\n", "error: surprising mask");
+						XCloseDisplay(display);
+						_exit(1);
+					}
+					else if (next->super == super) {
+						continue;
+					}
+					else if ((next->super != -1) && (next->super != super)) {
+						MergeSuperClusters(curr, next, clusters, super, x_l, x_u);
+						if (super != curr->super) {
+							if (curr->super != next->super) {
+								fprintf(stderr, "%s\n", "error: surprising merge logic flaw");
+								XCloseDisplay(display);
+								_exit(1);
+							}
+							super = curr->super;
+						}
+						continue;
+					}
+
+					CheckBoundsAndMerge(
+							curr,
+							next,
+							clusters,
+							super,
+							x_l,
+							x_u
+							);
+				}
+			}
+
+			int64_t total_max = 1;
+			int64_t id_max = -1;
+			for (int64_t i = 0; i != clno; ++i) {
+				int64_t id = cl[i];
+				struct cluster *iter = &clusters[id];
+				if (-1 == iter->super) {
+					continue;
+				}
+				struct cluster *super = &clusters[iter->super];
+				if (super->super != super->id) {
+					fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+				else if (super->prev != super->id) {
+					fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
+					XCloseDisplay(display);
+					_exit(1);
+				}
+
+				iter = super;
+				int64_t count = 0;
+				do {
+					count += iter->size;
+					iter = &clusters[iter->next];
+				} while (iter->next != iter->id);
+				super->total = count;
+
+				if (super->total > total_max) {
+					id_max = super->id;
+					total_max = super->total;
+				}
+			}
+
+
+			if (-1 != id_max) {
+				data = img->data;
+				memset(data, 0, bytes_per_pixel * width * height);
+				int32_t *frame = (typeof(frame)) data;
+				struct cluster const * const c = &clusters[id_max];
+				struct cluster const *iter = &clusters[c->next];
+				while (iter->next != iter->id) {
+					int64_t const x = iter->x;
+					int64_t const y = iter->y;
+					int64_t const id = width * y + x;
+					int32_t const rgb = (0xff << green_shift);
+					frame[id] = rgb;
+					struct cluster *node = &clusters[iter->node];
+					while (node->node != node->root) {
+						int64_t const x = node->x;
+						int64_t const y = node->y;
+						int64_t const id = width * y + x;
+						int32_t const rgb = (0xff << green_shift);
+						frame[id] = rgb;
+						node = &clusters[node->node];
+					}
+					iter = &clusters[iter->next];
+				}
+				XPutImage(
+						display,
+						OutputWindow,
+						DefaultGCOfScreen(DefaultScreenOfDisplay(display)),
+						img,
+						0,
+						0,
+						0,
+						0,
+						width,
+						height
+					 );
+				XFlush(display);
+			}
+		}
+
 		if (frameno & 256) {
 			frameno = 0;
 			// NOTE: elapsed time has data up to the previous frame so 255
@@ -1414,400 +1797,6 @@ int main(int argc, char *argv[])
 		clock_gettime(CLOCK_MONOTONIC, &end);
 		LinuxDiffTimeSpec(&delta, &start, &end);
 		LinuxCSumTimeSpec(&etime, &delta);
-	}
-
-	data = img->data;
-	// PERF: don't mind doing multiple passes on the framebuffer while writing experimental code so bear it with me
-	for (int64_t y = 0; y != height; ++y) {
-		int32_t *frame = (int32_t*) data;
-		for (int64_t x = 0; x != width; ++x) {
-			int64_t id = width * y + x;
-			struct cluster *cluster = &clusters[id];
-			int32_t const rgb = frame[x];
-			int64_t const r = ((red_mask & rgb) >> red_shift);
-			int64_t const g = ((green_mask & rgb) >> green_shift);
-			int64_t const b = ((blue_mask & rgb) >> blue_shift);
-			cluster->mask = ((Blue(r, g, b))? BLUE_MASK_SONIC : 0);
-			cluster->root = id;
-			cluster->node = id;
-			cluster->prev = id;
-			cluster->next = id;
-			cluster->super = -1;
-			cluster->total = 1;
-			cluster->size = 1;
-			cluster->id = id;
-			cluster->x = x;
-			cluster->y = y;
-		}
-		data += pitch;
-	}
-
-	data = img->data;
-	memset(part, 0xff, bytes_partition);
-	for (int64_t y = 0; y != height; ++y) {
-		int32_t *frame = (int32_t*) data;
-		for (int64_t x = 0; x != width; ++x) {
-			rc = Clustering(
-					part,
-					frame,
-					red_mask,
-					green_mask,
-					blue_mask,
-					red_shift,
-					green_shift,
-					blue_shift,
-					width,
-					x,
-					y
-			);
-			if (-1 == rc) {
-				XCloseDisplay(display);
-				_exit(1);
-			}
-		}
-		data += pitch;
-	}
-
-	int64_t clno = 0;
-	CID *cl = (typeof(cl)) (((byte_t*) base) + offset_cluster_list);
-	if (((uintptr_t) cl) & 63) {
-		fprintf(stderr, "%s\n", "error: array 'cl' not 64-byte aligned");
-		XCloseDisplay(display);
-		_exit(1);
-	}
-	memset(cl, 0, bytes_cluster_list);
-	// links nodes of constant y-striped clusters
-	for (int64_t i = 0; i != pixels; ++i) {
-		struct cluster *cluster = &clusters[i];
-		if ((BLUE_MASK_SONIC == cluster->mask) && (part[i] < 0)) {
-			cluster->size = -(part[i]);
-			int64_t const childno = (cluster->size - 1);
-			cluster->node = (i + childno);
-			for (int64_t j = 0; j != childno; ++j) {
-				int64_t id = ((i + 1) + (childno - 1) - j);
-				if (part[id] != i) {
-					fprintf(stderr, "%s\n", "error: part");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				struct cluster *child = &clusters[id];
-				if (BLUE_MASK_SONIC != child->mask) {
-					fprintf(stderr, "%s\n", "error: unexpected partition error");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				child->size = 0;
-				child->node = (id - 1);
-				child->root = i;
-			}
-			if ((1 == cluster->size) && (cluster->node != cluster->id)) {
-				fprintf(stderr, "%s\n", "error: unexpected clustering error");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			cl[clno] = i;
-			++clno;
-		}
-	}
-
-	// check the links of the constant y-striped clusters
-	for (int64_t id = 0; id != pixels; ++id) {
-		struct cluster const * const cluster = &clusters[id];
-		if (BLUE_MASK_SONIC != cluster->mask) {
-			continue;
-		}
-		else if (cluster->size <= 1) {
-			continue;
-		}
-		int64_t count = 1;
-		struct cluster const * child = &clusters[cluster->node];
-		int64_t const childno = (cluster->size - 1);
-		while (child->node != id) {
-			child = &clusters[child->node];
-			if (child->y != cluster->y) {
-				fprintf(stderr, "%s\n", "error: striping");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			if (count >= childno) {
-				fprintf(stderr, "%s\n", "error: clustering");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			++count;
-		}
-		if (count != childno) {
-			fprintf(stderr, "%s\n", "error: cluster-list");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-	}
-
-	int64_t merges = 0;
-	if (clno < 2) {
-		fprintf(stdout, "merged-clusters-count: %ld\n", merges);
-		XCloseDisplay(display);
-		_exit(0);
-	}
-	fprintf(stdout, "%s\n", "merging clusters");
-
-	for (int64_t i = 0; i != (clno - 1); ++i) {
-		int64_t const ii = cl[i];
-		struct cluster *curr = &clusters[ii];
-		if (curr->root != curr->id) {
-			fprintf(stderr, "%s\n", "error: not a cluster");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-		else if (BLUE_MASK_SONIC != curr->mask) {
-			fprintf(stderr, "%s\n", "error: mask");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-
-		int64_t const x_l = curr->x;
-		int64_t x_u = curr->x;
-		if (
-			(curr->next != curr->id) &&
-			(curr->y == clusters[curr->next].y)
-		   ) {
-			struct cluster const *iter = &clusters[curr->next];
-			struct cluster const *prev = &clusters[curr->next];
-			while ((iter->y == curr->y) && (iter->next != iter->id)) {
-				if (BLUE_MASK_SONIC != iter->mask) {
-					fprintf(stderr, "%s\n", "error: mask");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				prev = iter;
-				iter = &clusters[iter->next];
-			}
-
-			if (iter->y != curr->y) {
-				iter = prev;
-			}
-
-			if (iter->y != curr->y) {
-				fprintf(stderr, "%s\n", "error: not on the same scanline");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-
-			if (1 == iter->size) {
-				x_u = iter->x;
-			}
-			else {
-				iter = &clusters[iter->node];
-				if (iter->root == iter->id) {
-					fprintf(stderr, "%s\n", "error: not a node");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				x_u = iter->x;
-			}
-		}
-		else if (1 == curr->size) {
-			continue;
-		}
-		else if (curr->size > 1) {
-			// NOTE using the redundant logic expression for readability
-			struct cluster const * const node = &clusters[curr->node];
-			if (BLUE_MASK_SONIC != node->mask) {
-				fprintf(stderr, "%s\n", "error: mask");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			x_u = node->x;
-		}
-
-		if (x_l == x_u) {
-			fprintf(stderr, "%s\n", "error: traversal logic");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-		else if (x_l >= x_u) {
-			fprintf(stderr, "%s\n", "error: serious implementation flaw");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-
-		// initially marks ordinary clusters into super-clusters
-		struct cluster *iter = &clusters[curr->id];
-		if (-1 == iter->super) {
-			while (iter->prev != iter->id) {
-				iter = &clusters[iter->prev];
-			}
-			iter->super = iter->id;
-		}
-		else {
-			iter = &clusters[iter->super];
-			if (iter->prev != iter->id) {
-				fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			else if (iter->super != iter->id) {
-				fprintf(stderr, "%s\n", "error: unexpected error not a super cluster by id");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-		}
-
-		int64_t super = iter->super;
-		for (int64_t j = (i + 1); j != clno; ++j) {
-			int64_t const jj = cl[j];
-			struct cluster *next = &clusters[jj];
-			if (0 == next->size) {
-				fprintf(stderr, "%s\n", "surprising landing on node");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			else if (next->root != next->id) {
-				fprintf(stderr, "%s\n", "error: not a cluster");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			else if (BLUE_MASK_SONIC != next->mask) {
-				fprintf(stderr, "%s\n", "error: mask");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			else if (next->y == curr->y) {
-				continue;
-			}
-			else if ((next->y - curr->y) > 1) {
-				break;
-			}
-			else if (next->root != next->id) {
-				continue;
-			}
-			else if (BLUE_MASK_SONIC != next->mask) {
-				fprintf(stderr, "%s\n", "error: surprising mask");
-				XCloseDisplay(display);
-				_exit(1);
-			}
-			else if (next->super == super) {
-				continue;
-			}
-			else if ((next->super != -1) && (next->super != super)) {
-				MergeSuperClusters(curr, next, clusters, super, x_l, x_u);
-				if (super != curr->super) {
-					if (curr->super != next->super) {
-						fprintf(stderr, "%s\n", "error: surprising merge logic flaw");
-						XCloseDisplay(display);
-						_exit(1);
-					}
-					super = curr->super;
-				}
-				continue;
-			}
-
-			CheckBoundsAndMerge(
-				curr,
-				next,
-				clusters,
-				super,
-				x_l,
-				x_u
-			);
-		}
-	}
-
-	int64_t nodes = 0;
-	for (int64_t i = 0; i != pixels; ++i) {
-		struct cluster const * const c = &clusters[i];
-		if (c->mask) {
-			++nodes;
-		}
-	}
-
-	fprintf(stdout, "nodes: %ld\n", nodes);
-
-	int64_t total_max = 1;
-	int64_t id_max = -1;
-	for (int64_t i = 0; i != clno; ++i) {
-		int64_t id = cl[i];
-		struct cluster *iter = &clusters[id];
-		if (-1 == iter->super) {
-			continue;
-		}
-		struct cluster *super = &clusters[iter->super];
-		if (super->super != super->id) {
-			fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-		else if (super->prev != super->id) {
-			fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-
-		iter = super;
-		int64_t count = 0;
-		do {
-			count += iter->size;
-			iter = &clusters[iter->next];
-		} while (iter->next != iter->id);
-		super->total = count;
-
-		if (super->total > total_max) {
-			id_max = super->id;
-			total_max = super->total;
-		}
-	}
-
-	// TODO: if there's nothing to render we just show a black window
-	if (-1 == id_max) {
-		fprintf(stderr, "%s\n", "error: nonsensical super-clusters found");
-		XCloseDisplay(display);
-		_exit(1);
-	}
-
-	{
-		data = img->data;
-		memset(data, 0, bytes_frame);
-		int32_t *frame = (typeof(frame)) data;
-		struct cluster const * const c = &clusters[id_max];
-		if (c->next == c->id) {
-			fprintf(stderr, "%s\n", "error: wrong super-cluster");
-			XCloseDisplay(display);
-			_exit(1);
-		}
-		struct cluster const *iter = &clusters[c->next];
-		while (iter->next != iter->id) {
-			int64_t const x = iter->x;
-			int64_t const y = iter->y;
-			int64_t const id = width * y + x;
-			int32_t const rgb = (0xff << green_shift);
-			frame[id] = rgb;
-			struct cluster *node = &clusters[iter->node];
-			while (node->node != node->root) {
-				int64_t const x = node->x;
-				int64_t const y = node->y;
-				int64_t const id = width * y + x;
-				int32_t const rgb = (0xff << green_shift);
-				frame[id] = rgb;
-				node = &clusters[node->node];
-			}
-			iter = &clusters[iter->next];
-		}
-		XPutImage(
-				display,
-				OutputWindow,
-				DefaultGCOfScreen(DefaultScreenOfDisplay(display)),
-				img,
-				0,
-				0,
-				0,
-				0,
-				width,
-				height
-			 );
-		XSync(display, True);
-		char buff = 0;
-		fprintf(stdout, "%s\n", "press any key to continue");
-		fread(&buff, sizeof(buff), 1, stdin);
 	}
 
 	XFree(SizeHints);
