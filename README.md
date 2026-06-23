@@ -42,7 +42,7 @@ https://youtu.be/0rTqrAbqRI8
 [![V](https://img.youtube.com/vi/0rTqrAbqRI8/hqdefault.jpg)](https://youtu.be/0rTqrAbqRI8)
 - **sonic detection**: have successfully detected some of the pixels that belong to sonic while excluding the background and so the engine is getting closer to the goal of doing this in real-time. Having the code process a sonic image has enabled me to address new edge-cases such as needed to swap the `left` and `right` iterators when the iterators reach the common scanline between them. If we don't the merge fails because the id ordering (smallest to largest) is not realized. The defensive programming that the code already had enabled me to tackle this problem quickly.
 [![DetectsSonic](https://img.youtube.com/vi/EGqeIvFt7kY/hqdefault.jpg)](https://youtu.be/EGqeIvFt7kY)
-- **currently rewriting**: the logic that handles the merge of a cluster in a scanline is under undergoing revision. This part of the algorithm was written before I introduce the `super` data member that stores the id of the super-cluster and so any links made between them would cause problems later on because `super` is uninitialized. This is why the computation has been disabled. At least I know that the merge between scanlines (harder to get right) is working.
+- **deferred rewriting**: the logic that handles the merge of a cluster in a scanline shall be worked on later. This part of the algorithm was written before I introduce the `super` data member that stores the id of the super-cluster and so any links made between them would cause problems later on because `super` is uninitialized. This is why the computation has been disabled. At least I know that the merge between scanlines (harder to get right) is working.
 
 ### Week 3: Real-Time Tracking
 
