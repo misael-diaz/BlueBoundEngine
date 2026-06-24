@@ -50,6 +50,9 @@ Have succeeded in tracking the player real-time, the engine does not crash, does
 
 [![RealTimeTracking](https://img.youtube.com/vi/fZFzrHi46N8/hqdefault.jpg)](https://youtu.be/fZFzrHi46N8)
 
+-**shared memory**: have begun to use the shared-memory extension to improve the performance of the engine. So far the engine shares the framebuffer of the game with the XServer. I still have to use the shared-memory extension for the engine framebuffer. Have yet to reach the desired target of 30 FPS.
+-**assertions**: instead of enforcing runtime assertions that are useful for debugging the code these have been expressed in an `Assertion` macro function that only exist when compiling the source code in development mode. See the build info below for more details about that.
+
 ## Build
 
 To obtain a development build use the following command-line string:
