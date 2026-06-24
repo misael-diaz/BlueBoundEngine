@@ -52,6 +52,11 @@ Have succeeded in tracking the player real-time, the engine does not crash, does
 
 -**shared memory**: have begun to use the shared-memory extension to improve the performance of the engine. So far the engine shares the framebuffer of the game with the XServer. I still have to use the shared-memory extension for the engine framebuffer. Have yet to reach the desired target of 30 FPS.
 -**assertions**: instead of enforcing runtime assertions that are useful for debugging the code these have been expressed in an `Assertion` macro function that only exist when compiling the source code in development mode. See the build info below for more details about that.
+-**event-loop filter**: we only check for key-press events for the output window instead of processing all events.
+-**framebuffer transfer optimization**: by having the engine send to the XServer just the pixels that comprise the player we have improved the performance of the engine. We just instruct the XServer to clear the framebuffer and then send the pixels that comprise the player over the Unix socket.
+-**CPU cache optimization**: by taking advantage of the fact that each cluster is a collection of pixels next to each other we access them in order to improve CPU cache utilization.
+
+[![ImprovedEngine](https://img.youtube.com/vi/Z15WNpSjAsY/hqdefault.jpg)](https://youtu.be/Z15WNpSjAsY)
 
 ## Build
 
