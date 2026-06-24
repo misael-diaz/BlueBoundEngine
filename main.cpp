@@ -53,7 +53,11 @@ extern "C" struct cluster {
 	int64_t id;
 	int64_t x;
 	int64_t y;
-	int64_t _pad[5];
+	int64_t x_min;
+	int64_t x_max;
+	int64_t y_min;
+	int64_t y_max;
+	int64_t _pad[1];
 };
 
 static_assert(128 == sizeof(struct cluster));
@@ -1652,8 +1656,37 @@ int main(int argc, char *argv[])
 				data = (typeof(data)) (((char*) base) + offset_frame);
 				memset(data, 0, bytes_per_pixel * width * height);
 				int32_t *frame = (typeof(frame)) data;
-				struct cluster const * const c = &clusters[id_max];
-				struct cluster const *iter = &clusters[c->next];
+				struct cluster *c = &clusters[id_max];
+				int64_t x_min = width;
+				int64_t x_max = 0;
+				int64_t y_min = height;
+				int64_t y_max = 0;
+				struct cluster *iter = c;
+				while (iter->next != iter->id) {
+					for (int64_t i = 0; i != iter->size; ++i) {
+						int64_t const ii = (i + iter->id);
+						struct cluster const * const node = &clusters[ii];
+						if (node->x < x_min) {
+							x_min = node->x;
+						}
+						if (node->x > x_max) {
+							x_max = node->x;
+						}
+						if (node->y < y_min) {
+							y_min = node->y;
+						}
+						if (node->y > y_max) {
+							y_max = node->y;
+						}
+					}
+					iter = &clusters[iter->next];
+				}
+				c->x_min = x_min;
+				c->x_max = x_max;
+				c->y_min = y_min;
+				c->y_max = y_max;
+
+				iter = &clusters[c->next];
 				while (iter->next != iter->id) {
 					int64_t const x = iter->x;
 					int64_t const y = iter->y;
@@ -1672,17 +1705,18 @@ int main(int argc, char *argv[])
 					iter = &clusters[iter->next];
 				}
 				// TODO: consider using shared-memory after filtering out the game window events from the event-loop
+				XClearWindow(display, OutputWindow);
 				XPutImage(
 						display,
 						OutputWindow,
 						DefaultGCOfScreen(DefaultScreenOfDisplay(display)),
 						img,
-						0,
-						0,
-						0,
-						0,
-						width,
-						height
+						c->x_min,
+						c->y_min,
+						c->x_min,
+						c->y_min,
+						(c->x_max - c->x_min),
+						(c->y_max - c->y_min)
 					 );
 				XFlush(display);
 			}
