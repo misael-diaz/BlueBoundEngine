@@ -10,15 +10,22 @@
 #include <time.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/XShm.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <sys/mman.h>
 
 #define BLUE_FPS_TARGET 30.0f
 #define BLUE_MASK_SONIC (1L << 0)
+// TODO: add MIT License notice at the head of the source code
 // TODO: bound sonic at a fixed framerate
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) ((((r) >= 0x30) && ((r) < 0x60)) && (((g) >= 0x30) && ((g) < 0x60)) && (((b) >= 0x90) && ((b) <= 0xff)))
 
 #define KBD_ESC XKeysymToKeycode(display, XK_Escape)
+
+// References:
+// Xlib's shared-memory extension: https://xorg.freedesktop.org/archive/X11R7.7/doc/xextproto/shm.html
 
 typedef char unsigned byte_t;
 typedef int64_t CID;
@@ -1119,13 +1126,21 @@ int main(int argc, char *argv[])
 		_exit(1);
 	}
 
+	if (!XShmQueryExtension(display)) {
+		XCloseDisplay(display);
+		fprintf(stderr, "%s\n", "error: requires X11 shared-memory extension");
+		_exit(1);
+	}
+
 	XWindowAttributes attributes = {};
 	XGetWindowAttributes(display, GameWindow, &attributes);
 //	int const x = attributes.x;
 //	int const y = attributes.y;
 	int64_t const width = attributes.width;
 	int64_t const height = attributes.height;
-//	Screen *screen = attributes.screen;
+	Screen *screen = attributes.screen;
+	int64_t const depth = attributes.depth;
+	Visual *visual = attributes.visual;
 
 	XSizeHints *SizeHintsGameWindow = XAllocSizeHints();
 	if (!SizeHintsGameWindow) {
@@ -1142,13 +1157,58 @@ int main(int argc, char *argv[])
 	XSetWMNormalHints(display, GameWindow, SizeHintsGameWindow);
 	XSync(display, False);
 
+	XShmSegmentInfo shminfo = {};
+	XImage *GameImage = XShmCreateImage(
+            display,
+	    visual,
+            depth,
+            ZPixmap,
+            NULL,
+            &shminfo,
+            width,
+	    height);
+
+	// NOTE: trying to free XImage GameImage with XDestroyImage could fail becasue it tries to free the underlying data and it has not been allocated so maybe try to call XFree() or free() or let the operating system (Linux Kernel) handle the resource management as Casey Muratori would probably advice on this one. The best way to handle it here is to call XDestroyImage after nullifying the data member of GameImage to err on the safe-side.
+	if (!GameImage) {
+		XCloseDisplay(display);
+		fprintf(stderr, "%s\n", "error: XShmAttach failed");
+		_exit(1);
+	}
+
+	errno = 0;
+	int64_t rc = shmget(
+		IPC_PRIVATE,
+		GameImage->bytes_per_line * GameImage->height,
+		IPC_CREAT | 0777
+	);
+	if (-1 == rc) {
+		fprintf(stderr, "%s\n", "error: failed to get shared-memory identifier");
+		if (errno) {
+			fprintf(stderr, "%s\n", strerror(errno));
+		}
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	shminfo.shmid = rc;
+	// NOTE: not using the base address of the memory-mapping as I was planning to do because of the remapping issues that this could cause. Probably the XServer expects the memory address to stay fixed and this is not guaranteed when using mremap with MREMAP_MAYMOVE which is exactly what the engine does
+	shminfo.shmaddr = GameImage->data = ((char*) shmat(shminfo.shmid, NULL, 0));
+	shminfo.readOnly = False;
+	if (!XShmAttach(display, &shminfo)) {
+		XCloseDisplay(display);
+		fprintf(stderr, "%s\n", "error: XShmAttach failed");
+		_exit(1);
+	}
+
 	// plane mask tells that we care about all the bits that define color RRGGBB
 	int const format = ZPixmap;
 	int64_t const plane_mask = 0xffffff;
-	XImage *img = XGetImage(display, GameWindow, 0, 0, width, height, plane_mask, format);
-	int64_t const depth = img->depth;
+	if (!XShmGetImage(display, GameWindow, GameImage, 0, 0, plane_mask)) {
+		XCloseDisplay(display);
+		fprintf(stderr, "%s\n", "error: XShmGetImage failed");
+		_exit(1);
+	}
 
-	Screen *screen = DefaultScreenOfDisplay(display);
 	XSetWindowAttributes OutputWindowAttributes = {};
 	OutputWindowAttributes.background_pixel = BlackPixelOfScreen(screen);
 	OutputWindowAttributes.event_mask = (
@@ -1196,9 +1256,9 @@ int main(int argc, char *argv[])
 	int64_t green_shift = 0;
 	int64_t blue_shift = 0;
 	int64_t const rgb_mask = 0xff;
-	int64_t const red_mask = img->red_mask;
-	int64_t const green_mask = img->green_mask;
-	int64_t const blue_mask = img->blue_mask;
+	int64_t const red_mask = GameImage->red_mask;
+	int64_t const green_mask = GameImage->green_mask;
+	int64_t const blue_mask = GameImage->blue_mask;
 	while ((rgb_mask << red_shift) != red_mask) {
 		red_shift += 8LU;
 		if (iters > 2) {
@@ -1241,21 +1301,20 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "green-shift: %ld\n", green_shift);
 	fprintf(stdout, "blue-shift: %ld\n", blue_shift);
 
-	char *data = img->data;
-	int64_t pitch = img->bytes_per_line;
+	int64_t pitch = GameImage->bytes_per_line;
 	int64_t pixels = (width * height);
-	int64_t const bytes_per_pixel = (img->bits_per_pixel >> 3);
+	int64_t const bytes_per_pixel = (GameImage->bits_per_pixel >> 3);
 	int64_t bytes_frame = bytes_per_pixel * pixels;
 	int64_t bytes_partition = bytes_frame;
 	// even for 24-bit depth visuals images are usually stored with 32-bit padding
-	if (32 != img->bits_per_pixel) {
+	if (32 != GameImage->bits_per_pixel) {
 		fprintf(stderr, "%s\n", "error: unexpected pixel depth");
 		XCloseDisplay(display);
 		_exit(1);
 	}
 
 	errno = 0;
-	int64_t rc = sysconf(_SC_PAGESIZE);
+	rc = sysconf(_SC_PAGESIZE);
 	if (-1 == rc) {
 		if (errno) {
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -1300,8 +1359,9 @@ int main(int argc, char *argv[])
 	}
 
 	// initializes the partition array for the clustering algorithm
-	int64_t offset_partition = 0;
-	int64_t offset_clusters = ((bytes_partition + 0x3f) & ~0x3f);
+	int64_t offset_frame = 0;
+	int64_t offset_partition = (((offset_frame + bytes_partition) + 0x3f) & ~0x3f);
+	int64_t offset_clusters = (((offset_partition + bytes_partition) + 0x3f) & ~0x3f);
 	int64_t offset_cluster_list = (
 		((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
 	);
@@ -1318,6 +1378,34 @@ int main(int argc, char *argv[])
 		XCloseDisplay(display);
 		_exit(1);
 	}
+
+	char *data = (typeof(data)) (((char*) base) + offset_frame);
+	if (((uintptr_t) data) & 63) {
+		fprintf(stderr, "%s\n", "error: framebuffer not 64-byte aligned");
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
+	XImage *img = XCreateImage(
+		display,
+		visual,
+		depth,
+		format,
+		0,
+		data,
+		width,
+		height,
+		32,
+		0
+	);
+
+	if (!img) {
+		fprintf(stderr, "%s\n", "error; failed to create XImage for the engine");
+		XDestroyWindow(display, OutputWindow);
+		XCloseDisplay(display);
+		_exit(1);
+	}
+
 
 	float constexpr FPSFloat = BLUE_FPS_TARGET;
 	float constexpr FPSInvFloat = 1.0e9f / FPSFloat;
@@ -1349,6 +1437,7 @@ int main(int argc, char *argv[])
 					bytes_cluster_list = pixels * sizeof(CID);
 					bytes_clusters = pixels * sizeof(*clusp);
 					bytes_required = (
+						bytes_frame +
 						bytes_partition +
 						bytes_clusters +
 						bytes_cluster_list +
@@ -1375,8 +1464,9 @@ int main(int argc, char *argv[])
 						}
 						bytes_mmap <<= 1;
 					}
-					offset_partition = 0;
-					offset_clusters = ((bytes_partition + 0x3f) & ~0x3f);
+					offset_frame = 0;
+					offset_partition = (((offset_frame + bytes_frame) + 0x3f) & ~0x3f);
+					offset_clusters = (((offset_partition + bytes_partition) + 0x3f) & ~0x3f);
 					offset_cluster_list = (
 						((offset_clusters + bytes_clusters) + 0x3f) & ~0x3f
 					);
@@ -1400,12 +1490,13 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		XDestroyImage(img);
-		img = XGetImage(display, GameWindow, 0, 0, width, height, plane_mask, format);
+		XShmGetImage(display, GameWindow, GameImage, 0, 0, plane_mask);
 
 		memset(base, 0, bytes_mmap);
 
-		data = img->data;
+		// NOTE: the base address may change on mremaps (due to the resizing of the engine window) and so we need to update the framebuffer address to avert errors
+		img->data = (typeof(img->data)) (((char*) base) + offset_frame);
+		data = GameImage->data;
 		clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
 		if (((uintptr_t) clusters) & 63) {
 			fprintf(stderr, "%s\n", "error: array 'clusters' not 64-byte aligned");
@@ -1436,7 +1527,7 @@ int main(int argc, char *argv[])
 			data += pitch;
 		}
 
-		data = img->data;
+		data = GameImage->data;
 		part = (typeof(part)) (((byte_t*) base) + offset_partition);
 		if (((uintptr_t) part) & 63) {
 			fprintf(stderr, "%s\n", "error: array 'part' not 64-byte aligned");
@@ -1744,7 +1835,7 @@ int main(int argc, char *argv[])
 
 
 			if (-1 != id_max) {
-				data = img->data;
+				data = (typeof(data)) (((char*) base) + offset_frame);
 				memset(data, 0, bytes_per_pixel * width * height);
 				int32_t *frame = (typeof(frame)) data;
 				struct cluster const * const c = &clusters[id_max];
@@ -1802,6 +1893,13 @@ int main(int argc, char *argv[])
 		LinuxCSumTimeSpec(&etime, &delta);
 	}
 
+	// NOTE: nullifies the Ximage data member to prevent XDestroyImage from trying to free a memory address that's not on the heap
+	img->data = NULL;
+	XDestroyImage(img);
+	XShmDetach(display, &shminfo);
+	XDestroyImage(GameImage);
+	shmdt(shminfo.shmaddr);
+	shmctl(shminfo.shmid, IPC_RMID, 0);
 	XFree(SizeHints);
 	XFree(SizeHintsGameWindow);
 	XDestroyWindow(display, OutputWindow);
