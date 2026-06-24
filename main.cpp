@@ -1686,6 +1686,14 @@ int main(int argc, char *argv[])
 					 );
 				XFlush(display);
 			}
+			else {
+				XClearWindow(display, OutputWindow);
+				XFlush(display);
+			}
+		}
+		else {
+			XClearWindow(display, OutputWindow);
+			XFlush(display);
 		}
 
 		if (frameno & 256) {
