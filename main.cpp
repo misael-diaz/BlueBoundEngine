@@ -28,6 +28,7 @@
 #define BLUE_FPS_TARGET 30.0f
 #define BLUE_MASK_SONIC (1L << 0)
 // TODO: add MIT License notice at the head of the source code
+// TODO: work on filtering out the events from the game in the event-loop (note the event loop as is written only looks for events it does not discriminate by the window ID and so we are technically waiting for all the events to clear out before we do our work).
 // TODO: bound sonic at a fixed framerate
 // TODO: consider working with a packed RGB parameter instead
 #define Blue(r, g, b) ((((r) >= 0x30) && ((r) < 0x60)) && (((g) >= 0x30) && ((g) < 0x60)) && (((b) >= 0x90) && ((b) <= 0xff)))
@@ -953,6 +954,7 @@ extern "C" void MergeSuperClusters(
 	Assert(0);
 	//fprintf(stderr, "%s\n", "error: should never execute");
 	return;
+#if DEVBUILD
 check_merge: {
 		     // checks the cluster count and we have to initialize to 1 to account for the super-cluster itself
 		     count = 1;
@@ -988,6 +990,11 @@ check_merge: {
 
 		     return;
 	     }
+#else
+check_merge: {
+		     return;
+	     }
+#endif
 }
 
 int main(int argc, char *argv[])
@@ -1055,6 +1062,7 @@ int main(int argc, char *argv[])
 	int64_t const depth = attributes.depth;
 	Visual *visual = attributes.visual;
 
+	// TODO: disable fullscreen toggling because the client might support this but we are enforcing a fixed sized window
 	XSizeHints *SizeHintsGameWindow = XAllocSizeHints();
 	if (!SizeHintsGameWindow) {
 		XCloseDisplay(display);
@@ -1124,6 +1132,7 @@ int main(int argc, char *argv[])
 
 	XSetWindowAttributes OutputWindowAttributes = {};
 	OutputWindowAttributes.background_pixel = BlackPixelOfScreen(screen);
+	// TODO: drop StructureNotifyMask we are not going to handle those since we are fixing the dimensions of the engine
 	OutputWindowAttributes.event_mask = (
 		ExposureMask |
 		StructureNotifyMask |
@@ -1146,6 +1155,7 @@ int main(int argc, char *argv[])
 		&OutputWindowAttributes
 	);
 
+	// TODO: fix the engine window size, this means no more resizing and no need for structure-notify event handling though don't remove the code because it can serve as reference in the future
 	XSizeHints *SizeHints = XAllocSizeHints();
 	if (!SizeHints) {
 		fprintf(stderr, "%s\n", "error; XSizeHints allocation failed");
@@ -1214,6 +1224,8 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "green-shift: %ld\n", green_shift);
 	fprintf(stdout, "blue-shift: %ld\n", blue_shift);
 
+	// TODO: do alternate the bytes frame computation to check:
+	// 		bytes_per_line * height == bytes_frame
 	int64_t pitch = GameImage->bytes_per_line;
 	int64_t pixels = (width * height);
 	int64_t const bytes_per_pixel = (GameImage->bits_per_pixel >> 3);
@@ -1262,6 +1274,7 @@ int main(int argc, char *argv[])
 	}
 
 	errno = 0;
+	// TODO: consider using MADV_RANDOM
 	rc = madvise(base, bytes_mmap, MADV_WILLNEED);
 	if (-1 == rc) {
 		if (errno) {
@@ -1334,9 +1347,11 @@ int main(int argc, char *argv[])
 	int64_t frameno = 0;
 	while (1) {
 		clock_gettime(CLOCK_MONOTONIC, &start);
+		// TODO: consider using XCheckWindowEvent for performance because here you are checking all events including those of the game which you do not intend to process
 		while (XPending(display)) {
 			XNextEvent(display, &ev);
 			switch (ev.type) {
+			// TODO: add Assert(0) because we are not doing this anymore so that we can use the mmap for sharing memory with the XServer for both the game window framebuffer and the output framebuffer of the engine
 			case ConfigureNotify: {
 				if (
 				      (width != ev.xconfigure.width) ||
@@ -1390,6 +1405,7 @@ int main(int argc, char *argv[])
 			}
 			break;
 			default: {
+				 // TODO: add Assert(1) at least to have something here
 			}
 			}
 		}
@@ -1458,7 +1474,7 @@ int main(int argc, char *argv[])
 		Assert(0 == (((uintptr_t) cl) & 63));
 		memset(cl, 0, bytes_cluster_list);
 
-		// links nodes of constant y-striped clusters
+		// links nodes of constant y-striped clusters (same scanline)
 		for (int64_t i = 0; i != pixels; ++i) {
 			struct cluster *cluster = &clusters[i];
 			if ((BLUE_MASK_SONIC == cluster->mask) && (part[i] < 0)) {
@@ -1479,6 +1495,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
+#if DEVBUILD
 		// check the links of the constant y-striped clusters
 		for (int64_t id = 0; id != pixels; ++id) {
 			struct cluster const * const cluster = &clusters[id];
@@ -1499,6 +1516,7 @@ int main(int argc, char *argv[])
 			}
 			Assert(count == childno);
 		}
+#endif
 
 		if (clno > 2) {
 			for (int64_t i = 0; i != (clno - 1); ++i) {
@@ -1629,6 +1647,7 @@ int main(int argc, char *argv[])
 
 
 			if (-1 != id_max) {
+				// TODO: instead of using the `next` data member for traversal you can confidently access them directly based on the cluster size for CPU cache performance (note that here you are accessing them in reverse order by starting at last node `node` data member)
 				data = (typeof(data)) (((char*) base) + offset_frame);
 				memset(data, 0, bytes_per_pixel * width * height);
 				int32_t *frame = (typeof(frame)) data;
@@ -1651,6 +1670,7 @@ int main(int argc, char *argv[])
 					}
 					iter = &clusters[iter->next];
 				}
+				// TODO: consider using shared-memory after filtering out the game window events from the event-loop
 				XPutImage(
 						display,
 						OutputWindow,
