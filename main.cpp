@@ -1686,21 +1686,16 @@ int main(int argc, char *argv[])
 				c->y_min = y_min;
 				c->y_max = y_max;
 
-				iter = &clusters[c->next];
+				iter = c;
 				while (iter->next != iter->id) {
-					int64_t const x = iter->x;
-					int64_t const y = iter->y;
-					int64_t const id = width * y + x;
-					int32_t const rgb = (0xff << green_shift);
-					frame[id] = rgb;
-					struct cluster *node = &clusters[iter->node];
-					while (node->node != node->root) {
+					for (int64_t i = 0; i != iter->size; ++i) {
+						int64_t const ii = (i + iter->id);
+						struct cluster const * const node = &clusters[ii];
 						int64_t const x = node->x;
 						int64_t const y = node->y;
 						int64_t const id = width * y + x;
 						int32_t const rgb = (0xff << green_shift);
 						frame[id] = rgb;
-						node = &clusters[node->node];
 					}
 					iter = &clusters[iter->next];
 				}
