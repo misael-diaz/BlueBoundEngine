@@ -68,6 +68,12 @@ g++ -DDEVBUILD=1 -Wall -Wformat -O0 -g main.cpp -o BlueCVEngine.bin -lX11 -lXext
 
 if you want to disable runtime assertions do not define `DEVBUILD` or set it to zero.
 
+For production builds use this command-line string:
+
+```sh
+g++ -O2 -g main.cpp -o BlueCVEngine.bin -lX11 -lXext
+```
+
 ## Run
 
 Before doing this step you need to be running a retro sonic game and gets the resource
