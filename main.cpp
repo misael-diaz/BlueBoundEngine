@@ -15,6 +15,16 @@
 #include <sys/shm.h>
 #include <sys/mman.h>
 
+#if DEVBUILD
+#define Assert(x)\
+	if (!(x)) {\
+		fprintf(stderr, "assertion failed %s:%d\n", __FILE__, __LINE__);\
+		*((volatile int*) 0) = 0;\
+	}
+#else
+#define Assert(x)
+#endif
+
 #define BLUE_FPS_TARGET 30.0f
 #define BLUE_MASK_SONIC (1L << 0)
 // TODO: add MIT License notice at the head of the source code
@@ -106,19 +116,11 @@ extern "C" void LinuxDelay(
 	struct timespec const * const clock_target
 ) {
 	int rc = 0;
-	if (CLOCK_MONOTONIC != clock_id) {
-		fprintf(stderr, "%s", "unsupported clock_id\n");
-		_exit(1);
-	}
+	Assert(CLOCK_MONOTONIC == clock_id);
 	do {
 		rc = clock_nanosleep(clock_id, TIMER_ABSTIME, clock_target, NULL);
-		if (EFAULT == rc) {
-			fprintf(stderr, "%s\n", "invalid address for nanosleep");
-			_exit(1);
-		} else if (EINVAL == rc) {
-			fprintf(stderr, "%s\n", "invalid timespec target value");
-			_exit(1);
-		}
+		Assert(EFAULT != rc);
+		Assert(EINVAL != rc);
 	} while (EINTR == rc);
 }
 
@@ -155,9 +157,7 @@ extern "C" int Clustering(
 				}
 				else {
 					int32_t const root = *(part + id);
-					if (*(part + root) >= 0) {
-						goto err_cluster;
-					}
+					Assert(*(part + root) < 0);
 					*(part + y * width + x) = root;
 					*(part + root) -= 1;
 				}
@@ -167,15 +167,15 @@ extern "C" int Clustering(
 
 	return 0;
 
-err_cluster:
-	{
+//err_cluster:
+//	{
 		// NOTE:
 		// If the partition value for a root node is positive that means that
 		// there is a logic error because root-nodes only store counts and
 		// these are negative values to differentiate them easily from node ids.
-		fprintf(stderr, "%s\n", "error: clustering logic");
-		return -1;
-	}
+//		fprintf(stderr, "%s\n", "error: clustering logic");
+//		return -1;
+//	}
 }
 
 extern "C" void MergeClusters(
@@ -186,12 +186,7 @@ extern "C" void MergeClusters(
 ) {
 	struct cluster *iter = &clusters[curr->next];
 	while (iter->next != iter->id) {
-		if (BLUE_MASK_SONIC != iter->mask) {
-			fprintf(stderr, "%s\n", "error: mask");
-			// NOTE: not going to agonize about exiting without closing the display since the window resource ID is not owned by this client X11 applicationa anyways
-			//XCloseDisplay(display);
-			_exit(1);
-		}
+		Assert(BLUE_MASK_SONIC == iter->mask);
 		iter = &clusters[iter->next];
 	}
 	iter->next = next->id;
@@ -357,37 +352,13 @@ extern "C" void MergeSuperClusters(
 		int64_t const x_l,
 		int64_t const x_u
 ) {
-	if (-1 == superid) {
-		fprintf(stderr, "%s\n", "error: invalid input argument `superid`");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (-1 == next->super) {
-		fprintf(stderr, "%s\n", "error: invalid input argument `next`");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (superid == next->super) {
-		fprintf(stderr, "%s\n", "error: invalid input arguments");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (curr->super == next->super) {
-		fprintf(stderr, "%s\n", "error: already merged yet we got called");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (BLUE_MASK_SONIC != curr->mask) {
-		fprintf(stderr, "%s\n", "error: 'curr' not a cluster, maskbit unset");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (BLUE_MASK_SONIC != next->mask) {
-		fprintf(stderr, "%s\n", "error: 'next' not a cluster, maskbit unset");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (next->x > x_u) {
+	Assert(-1 != superid);
+	Assert(-1 != next->super);
+	Assert(superid != next->super);
+	Assert(curr->super != next->super);
+	Assert(BLUE_MASK_SONIC == curr->mask);
+	Assert(BLUE_MASK_SONIC == next->mask);
+	if (next->x > x_u) {
 		return;
 	}
 	else if (next->x < x_l) {
@@ -423,18 +394,10 @@ extern "C" void MergeSuperClusters(
 	}
 
 	struct cluster *super = &clusters[superid];
-	if (super->prev != super->id) {
-		fprintf(stderr, "%s\n", "error: super-cluster `super` assignment failed previously");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
+	Assert(super->prev == super->id);
 
 	struct cluster *merge = &clusters[next->super];
-	if (merge->prev != merge->id) {
-		fprintf(stderr, "%s\n", "error: super-cluster `merge` assignment failed previously");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
+	Assert(merge->prev == merge->id);
 
 	int64_t id_super = -1;
 	int64_t id_merge = -1;
@@ -449,26 +412,10 @@ extern "C" void MergeSuperClusters(
 
 	struct cluster * const ref_super = &clusters[id_super];
 	struct cluster * const ref_merge = &clusters[id_merge];
-	if (ref_super->prev != ref_super->id) {
-		fprintf(stderr, "%s\n", "error: 'ref_super' not a super cluster");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (ref_super->super != ref_super->id) {
-		fprintf(stderr, "%s\n", "error: unset super data member");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (ref_merge->prev != ref_merge->id) {
-		fprintf(stderr, "%s\n", "error: 'ref_merge' not a super cluster");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
-	else if (ref_merge->super != ref_merge->id) {
-		fprintf(stderr, "%s\n", "error: unset super data member");
-		//XCloseDisplay(display);
-		_exit(1);
-	}
+	Assert(ref_super->prev == ref_super->id);
+	Assert(ref_super->super == ref_super->id);
+	Assert(ref_merge->prev == ref_merge->id);
+	Assert(ref_merge->super == ref_merge->id);
 
 	// gets the total cluster count prior to the merge to verify the merge code
 	int64_t count = 0;
@@ -505,11 +452,7 @@ extern "C" void MergeSuperClusters(
 	if (left->y < right->y) {
 		while (left->y < right->y) {
 			left->super = id_super;
-			if (left->next == left->id) {
-				fprintf(stderr, "%s\n", "error: early end of 'left' super-cluster");
-				// XCloseDisplay(display);
-				_exit(1);
-			}
+			Assert(left->next != left->id);
 			left = &clusters[left->next];
 		}
 		left->super = id_super;
@@ -517,21 +460,13 @@ extern "C" void MergeSuperClusters(
 	else if (left->y > right->y) {
 		while (left->y > right->y) {
 			right->super = id_super;
-			if (right->next == right->id) {
-				fprintf(stderr, "%s\n", "error: early end of super-cluster");
-				// XCloseDisplay(display);
-				_exit(1);
-			}
+			Assert(right->next != right->id);
 			right = &clusters[right->next];
 		}
 		right->super = id_super;
 	}
 
-	if (left->y != right->y) {
-		fprintf(stderr, "%s\n", "error: not on the same scanline traverse error");
-		// XCloseDisplay(display);
-		_exit(1);
-	}
+	Assert(left->y == right->y);
 
 	if (right->x < left->x) {
 		iter = left;
@@ -853,18 +788,13 @@ extern "C" void MergeSuperClusters(
 			// complains because this execution path should not happen
 			// since we explicitly looked for the first instance where
 			// both clusters have the same y-coord values.
-			fprintf(stderr, "%s\n", "error: merge impl error");
 			// XCloseDisplay(display);
-			_exit(1);
+			Assert(0);
 		}
 	}
 
 	while (1) {
-		if (left->y != right->y) {
-			fprintf(stderr, "%s\n", "error: scanline mismatch error");
-			// XCloseDisplay(display);
-			_exit(1);
-		}
+		Assert(left->y == right->y);
 
 		ref_y = left->y;
 
@@ -1020,7 +950,8 @@ extern "C" void MergeSuperClusters(
 		}
 	}
 
-	fprintf(stderr, "%s\n", "error: should never execute");
+	Assert(0);
+	//fprintf(stderr, "%s\n", "error: should never execute");
 	return;
 check_merge: {
 		     // checks the cluster count and we have to initialize to 1 to account for the super-cluster itself
@@ -1031,12 +962,7 @@ check_merge: {
 			     ++count;
 		     }
 
-		     if (count_total != count) {
-			     fprintf(stderr, "%s\n", "error: forward merge count");
-			     fprintf(stderr, "total: %ld count: %ld\n", count_total, count);
-			     // XCloseDisplay(display);
-			     _exit(1);
-		     }
+		     Assert(count_total == count);
 
 		     count = 1;
 		     while (iter->prev != iter->id) {
@@ -1044,31 +970,18 @@ check_merge: {
 			     ++count;
 		     }
 
-		     if (count_total != count) {
-			     fprintf(stderr, "%s\n", "error: backward merge count");
-			     fprintf(stderr, "total: %ld count: %ld\n", count_total, count);
-			     // XCloseDisplay(display);
-			     _exit(1);
-		     }
+		     Assert(count_total == count);
 
 		     iter = ref_super;
 		     while (iter->next != iter->id) {
-			     if (iter->super != id_super) {
-				     fprintf(stderr, "error: missed updating super data member of cluster with id %ld\n", iter->id);
-				     // XCloseDisplay(display);
-				     _exit(1);
-			     }
+			     Assert(iter->super == id_super);
 			     iter = &clusters[iter->next];
 		     }
 
 		     iter = ref_super;
 		     struct cluster *next = &clusters[iter->next];
 		     while (next->next != next->id) {
-			     if (iter->id >= next->id) {
-				     fprintf(stderr, "error: wrong merge order curr: %ld next:%ld\n", iter->id, next->id);
-				     // XCloseDisplay(display);
-				     _exit(1);
-			     }
+			     Assert(iter->id < next->id);
 			     iter = &clusters[iter->next];
 			     next = &clusters[next->next];
 		     }
@@ -1451,17 +1364,7 @@ int main(int argc, char *argv[])
 					if ((bytes_aligned + pagesz) > bytes_mmap) {
 						errno = 0;
 						base = mremap(base, bytes_mmap, (bytes_mmap << 1), MREMAP_MAYMOVE);
-						if (MAP_FAILED == base) {
-							fprintf(stderr, "%s\n", "error: mremap failed");
-							if (errno) {
-								fprintf(stderr, "%s\n", strerror(errno));
-							}
-							XFree(SizeHints);
-							XFree(SizeHintsGameWindow);
-							XDestroyWindow(display, OutputWindow);
-							XCloseDisplay(display);
-							_exit(1);
-						}
+						Assert(MAP_FAILED != base);
 						bytes_mmap <<= 1;
 					}
 					offset_frame = 0;
@@ -1475,6 +1378,7 @@ int main(int argc, char *argv[])
 			}
 			break;
 			case KeyPress: {
+				// TODO: instead of quitting in place you can now break the engine loop so that the resources are released properly
 				if (KBD_ESC == ev.xkey.keycode) {
 					fprintf(stdout, "%s\n", "quitting upon user request");
 					XFree(SizeHints);
@@ -1498,11 +1402,7 @@ int main(int argc, char *argv[])
 		img->data = (typeof(img->data)) (((char*) base) + offset_frame);
 		data = GameImage->data;
 		clusters = (typeof(clusters)) (((byte_t*) base) + offset_clusters);
-		if (((uintptr_t) clusters) & 63) {
-			fprintf(stderr, "%s\n", "error: array 'clusters' not 64-byte aligned");
-			XCloseDisplay(display);
-			_exit(1);
-		}
+		Assert(0 == (((uintptr_t) clusters) & 63));
 		for (int64_t y = 0; y != height; ++y) {
 			int32_t *frame = (int32_t*) data;
 			for (int64_t x = 0; x != width; ++x) {
@@ -1529,11 +1429,7 @@ int main(int argc, char *argv[])
 
 		data = GameImage->data;
 		part = (typeof(part)) (((byte_t*) base) + offset_partition);
-		if (((uintptr_t) part) & 63) {
-			fprintf(stderr, "%s\n", "error: array 'part' not 64-byte aligned");
-			XCloseDisplay(display);
-			_exit(1);
-		}
+		Assert(0 == (((uintptr_t) part) & 63));
 
 		memset(part, 0xff, bytes_partition);
 		for (int64_t y = 0; y != height; ++y) {
@@ -1552,21 +1448,14 @@ int main(int argc, char *argv[])
 						x,
 						y
 					       );
-				if (-1 == rc) {
-					XCloseDisplay(display);
-					_exit(1);
-				}
+				Assert(-1 != rc);
 			}
 			data += pitch;
 		}
 
 		int64_t clno = 0;
 		CID *cl = (typeof(cl)) (((byte_t*) base) + offset_cluster_list);
-		if (((uintptr_t) cl) & 63) {
-			fprintf(stderr, "%s\n", "error: array 'cl' not 64-byte aligned");
-			XCloseDisplay(display);
-			_exit(1);
-		}
+		Assert(0 == (((uintptr_t) cl) & 63));
 		memset(cl, 0, bytes_cluster_list);
 
 		// links nodes of constant y-striped clusters
@@ -1578,25 +1467,12 @@ int main(int argc, char *argv[])
 				cluster->node = (i + childno);
 				for (int64_t j = 0; j != childno; ++j) {
 					int64_t id = ((i + 1) + (childno - 1) - j);
-					if (part[id] != i) {
-						fprintf(stderr, "%s\n", "error: part");
-						XCloseDisplay(display);
-						_exit(1);
-					}
+					Assert(part[id] == i);
 					struct cluster *child = &clusters[id];
-					if (BLUE_MASK_SONIC != child->mask) {
-						fprintf(stderr, "%s\n", "error: unexpected partition error");
-						XCloseDisplay(display);
-						_exit(1);
-					}
+					Assert(BLUE_MASK_SONIC == child->mask);
 					child->size = 0;
 					child->node = (id - 1);
 					child->root = i;
-				}
-				if ((1 == cluster->size) && (cluster->node != cluster->id)) {
-					fprintf(stderr, "%s\n", "error: unexpected clustering error");
-					XCloseDisplay(display);
-					_exit(1);
 				}
 				cl[clno] = i;
 				++clno;
@@ -1617,39 +1493,19 @@ int main(int argc, char *argv[])
 			int64_t const childno = (cluster->size - 1);
 			while (child->node != id) {
 				child = &clusters[child->node];
-				if (child->y != cluster->y) {
-					fprintf(stderr, "%s\n", "error: striping");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				if (count >= childno) {
-					fprintf(stderr, "%s\n", "error: clustering");
-					XCloseDisplay(display);
-					_exit(1);
-				}
+				Assert(child->y == cluster->y);
+				Assert(count < childno);
 				++count;
 			}
-			if (count != childno) {
-				fprintf(stderr, "%s\n", "error: cluster-list");
-				XCloseDisplay(display);
-				_exit(1);
-			}
+			Assert(count == childno);
 		}
 
 		if (clno > 2) {
 			for (int64_t i = 0; i != (clno - 1); ++i) {
 				int64_t const ii = cl[i];
 				struct cluster *curr = &clusters[ii];
-				if (curr->root != curr->id) {
-					fprintf(stderr, "%s\n", "error: not a cluster");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				else if (BLUE_MASK_SONIC != curr->mask) {
-					fprintf(stderr, "%s\n", "error: mask");
-					XCloseDisplay(display);
-					_exit(1);
-				}
+				Assert(curr->root == curr->id);
+				Assert(BLUE_MASK_SONIC == curr->mask);
 
 				int64_t const x_l = curr->x;
 				int64_t x_u = curr->x;
@@ -1660,11 +1516,7 @@ int main(int argc, char *argv[])
 					struct cluster const *iter = &clusters[curr->next];
 					struct cluster const *prev = &clusters[curr->next];
 					while ((iter->y == curr->y) && (iter->next != iter->id)) {
-						if (BLUE_MASK_SONIC != iter->mask) {
-							fprintf(stderr, "%s\n", "error: mask");
-							XCloseDisplay(display);
-							_exit(1);
-						}
+						Assert(BLUE_MASK_SONIC == iter->mask);
 						prev = iter;
 						iter = &clusters[iter->next];
 					}
@@ -1673,22 +1525,14 @@ int main(int argc, char *argv[])
 						iter = prev;
 					}
 
-					if (iter->y != curr->y) {
-						fprintf(stderr, "%s\n", "error: not on the same scanline");
-						XCloseDisplay(display);
-						_exit(1);
-					}
+					Assert(iter->y == curr->y);
 
 					if (1 == iter->size) {
 						x_u = iter->x;
 					}
 					else {
 						iter = &clusters[iter->node];
-						if (iter->root == iter->id) {
-							fprintf(stderr, "%s\n", "error: not a node");
-							XCloseDisplay(display);
-							_exit(1);
-						}
+						Assert(iter->root != iter->id);
 						x_u = iter->x;
 					}
 				}
@@ -1698,24 +1542,12 @@ int main(int argc, char *argv[])
 				else if (curr->size > 1) {
 					// NOTE using the redundant logic expression for readability
 					struct cluster const * const node = &clusters[curr->node];
-					if (BLUE_MASK_SONIC != node->mask) {
-						fprintf(stderr, "%s\n", "error: mask");
-						XCloseDisplay(display);
-						_exit(1);
-					}
+					Assert(BLUE_MASK_SONIC == node->mask);
 					x_u = node->x;
 				}
 
-				if (x_l == x_u) {
-					fprintf(stderr, "%s\n", "error: traversal logic");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				else if (x_l >= x_u) {
-					fprintf(stderr, "%s\n", "error: serious implementation flaw");
-					XCloseDisplay(display);
-					_exit(1);
-				}
+				Assert(x_l != x_u);
+				Assert(x_l < x_u);
 
 				// initially marks ordinary clusters into super-clusters
 				struct cluster *iter = &clusters[curr->id];
@@ -1727,38 +1559,17 @@ int main(int argc, char *argv[])
 				}
 				else {
 					iter = &clusters[iter->super];
-					if (iter->prev != iter->id) {
-						fprintf(stderr, "%s\n", "error: unexpected error not a super cluster");
-						XCloseDisplay(display);
-						_exit(1);
-					}
-					else if (iter->super != iter->id) {
-						fprintf(stderr, "%s\n", "error: unexpected error not a super cluster by id");
-						XCloseDisplay(display);
-						_exit(1);
-					}
+					Assert(iter->prev == iter->id);
+					Assert(iter->super == iter->id);
 				}
 
 				int64_t super = iter->super;
 				for (int64_t j = (i + 1); j != clno; ++j) {
 					int64_t const jj = cl[j];
 					struct cluster *next = &clusters[jj];
-					if (0 == next->size) {
-						fprintf(stderr, "%s\n", "surprising landing on node");
-						XCloseDisplay(display);
-						_exit(1);
-					}
-					else if (next->root != next->id) {
-						fprintf(stderr, "%s\n", "error: not a cluster");
-						XCloseDisplay(display);
-						_exit(1);
-					}
-					else if (BLUE_MASK_SONIC != next->mask) {
-						fprintf(stderr, "%s\n", "error: mask");
-						XCloseDisplay(display);
-						_exit(1);
-					}
-					else if (next->y == curr->y) {
+					Assert(0 != next->size);
+					Assert(next->root == next->id);
+					if (next->y == curr->y) {
 						continue;
 					}
 					else if ((next->y - curr->y) > 1) {
@@ -1767,22 +1578,13 @@ int main(int argc, char *argv[])
 					else if (next->root != next->id) {
 						continue;
 					}
-					else if (BLUE_MASK_SONIC != next->mask) {
-						fprintf(stderr, "%s\n", "error: surprising mask");
-						XCloseDisplay(display);
-						_exit(1);
-					}
 					else if (next->super == super) {
 						continue;
 					}
 					else if ((next->super != -1) && (next->super != super)) {
 						MergeSuperClusters(curr, next, clusters, super, x_l, x_u);
 						if (super != curr->super) {
-							if (curr->super != next->super) {
-								fprintf(stderr, "%s\n", "error: surprising merge logic flaw");
-								XCloseDisplay(display);
-								_exit(1);
-							}
+							Assert(curr->super == next->super);
 							super = curr->super;
 						}
 						continue;
@@ -1808,16 +1610,8 @@ int main(int argc, char *argv[])
 					continue;
 				}
 				struct cluster *super = &clusters[iter->super];
-				if (super->super != super->id) {
-					fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
-					XCloseDisplay(display);
-					_exit(1);
-				}
-				else if (super->prev != super->id) {
-					fprintf(stderr, "%s\n", "error: surprising not a super-cluster");
-					XCloseDisplay(display);
-					_exit(1);
-				}
+				Assert(super->super == super->id);
+				Assert(super->prev == super->id);
 
 				iter = super;
 				int64_t count = 0;
