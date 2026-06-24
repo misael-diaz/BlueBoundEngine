@@ -55,8 +55,10 @@ Have succeeded in tracking the player real-time, the engine does not crash, does
 To obtain a development build use the following command-line string:
 
 ```sh
-g++ -Wall -Wformat -O0 -g main.cpp -o test.bin -lX11
+g++ -DDEVBUILD=1 -Wall -Wformat -O0 -g main.cpp -o BlueCVEngine.bin -lX11 -lXext
 ```
+
+if you want to disable runtime assertions do not define `DEVBUILD` or set it to zero.
 
 ## Run
 
@@ -101,7 +103,7 @@ based on this we know that the window resource ID is `90177537` (or `0x5600001`)
 now you can run the engine by providing this way:
 
 ```sh
-./test.bin --window 90177537
+./BlueCVEngine.bin --window 90177537
 ```
 
 In a future revision we could modify the engine so that you won't need to convert
