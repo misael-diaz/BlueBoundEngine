@@ -1135,7 +1135,7 @@ int main(int argc, char *argv[])
 	// TODO: drop StructureNotifyMask we are not going to handle those since we are fixing the dimensions of the engine
 	OutputWindowAttributes.event_mask = (
 		ExposureMask |
-		StructureNotifyMask |
+//		StructureNotifyMask |
 		KeyPressMask |
 		0
 	);
@@ -1348,11 +1348,11 @@ int main(int argc, char *argv[])
 	while (1) {
 		clock_gettime(CLOCK_MONOTONIC, &start);
 		// TODO: consider using XCheckWindowEvent for performance because here you are checking all events including those of the game which you do not intend to process
-		while (XPending(display)) {
-			XNextEvent(display, &ev);
+		if (XCheckTypedWindowEvent(display, OutputWindow, KeyPress, &ev)) {
 			switch (ev.type) {
 			// TODO: add Assert(0) because we are not doing this anymore so that we can use the mmap for sharing memory with the XServer for both the game window framebuffer and the output framebuffer of the engine
 			case ConfigureNotify: {
+				Assert(0);
 				if (
 				      (width != ev.xconfigure.width) ||
 				      (height != ev.xconfigure.height)
@@ -1406,6 +1406,7 @@ int main(int argc, char *argv[])
 			break;
 			default: {
 				 // TODO: add Assert(1) at least to have something here
+				 Assert(0);
 			}
 			}
 		}
