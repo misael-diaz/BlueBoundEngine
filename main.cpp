@@ -1340,17 +1340,43 @@ int main(int argc, char *argv[])
 	float constexpr FPSFloat = BLUE_FPS_TARGET;
 	float constexpr FPSInvFloat = 1.0e9f / FPSFloat;
 	int64_t constexpr FrameDurationTargetNanoSec = FPSInvFloat;
-	struct timespec start = {};
-	struct timespec end = {};
-	struct timespec etime = {};
-	struct timespec delta = {};
-	struct timespec sleep = {};
-	struct timespec target = {};
-	LinuxSetTimeSpec(&target, FrameDurationTargetNanoSec);
+	struct timespec start_frame = {};
+	struct timespec end_frame = {};
+	struct timespec etime_frame = {};
+	struct timespec delta_frame = {};
+	struct timespec sleep_frame = {};
+	struct timespec target_frame = {};
+	struct timespec start_getimage = {};
+	struct timespec end_getimage = {};
+	struct timespec etime_getimage = {};
+	struct timespec delta_getimage = {};
+	struct timespec start_init = {};
+	struct timespec end_init = {};
+	struct timespec etime_init = {};
+	struct timespec delta_init = {};
+	struct timespec start_cluster = {};
+	struct timespec end_cluster = {};
+	struct timespec etime_cluster = {};
+	struct timespec delta_cluster = {};
+	struct timespec start_merge = {};
+	struct timespec end_merge = {};
+	struct timespec etime_merge = {};
+	struct timespec delta_merge = {};
+	struct timespec start_backbuffer = {};
+	struct timespec end_backbuffer = {};
+	struct timespec etime_backbuffer = {};
+	struct timespec delta_backbuffer = {};
+	struct timespec start_putimage = {};
+	struct timespec end_putimage = {};
+	struct timespec etime_putimage = {};
+	struct timespec delta_putimage = {};
+	LinuxSetTimeSpec(&target_frame, FrameDurationTargetNanoSec);
 
 	int64_t frameno = 0;
+	int64_t mergeno = 0;
+	int64_t backbufferno = 0;
 	while (1) {
-		clock_gettime(CLOCK_MONOTONIC, &start);
+		clock_gettime(CLOCK_MONOTONIC, &start_frame);
 		// TODO: consider using XCheckWindowEvent for performance because here you are checking all events including those of the game which you do not intend to process
 		if (XCheckTypedWindowEvent(display, OutputWindow, KeyPress, &ev)) {
 			switch (ev.type) {
@@ -1415,9 +1441,15 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		clock_gettime(CLOCK_MONOTONIC, &start_getimage);
 		XShmGetImage(display, GameWindow, GameImage, 0, 0, plane_mask);
+		clock_gettime(CLOCK_MONOTONIC, &end_getimage);
+		LinuxDiffTimeSpec(&delta_getimage, &start_getimage, &end_getimage);
+		LinuxCSumTimeSpec(&etime_getimage, &delta_getimage);
 
-		memset(base, 0, bytes_mmap);
+		clock_gettime(CLOCK_MONOTONIC, &start_init);
+		// PERF: removes performance bottleneck, it's not necessary to clear the entire memory map
+		//memset(base, 0, bytes_mmap);
 
 		// NOTE: the base address may change on mremaps (due to the resizing of the engine window) and so we need to update the framebuffer address to avert errors
 		img->data = (typeof(img->data)) (((char*) base) + offset_frame);
@@ -1453,6 +1485,11 @@ int main(int argc, char *argv[])
 		Assert(0 == (((uintptr_t) part) & 63));
 
 		memset(part, 0xff, bytes_partition);
+		clock_gettime(CLOCK_MONOTONIC, &end_init);
+		LinuxDiffTimeSpec(&delta_init, &start_init, &end_init);
+		LinuxCSumTimeSpec(&etime_init, &delta_init);
+
+		clock_gettime(CLOCK_MONOTONIC, &start_cluster);
 		for (int64_t y = 0; y != height; ++y) {
 			int32_t *frame = (int32_t*) data;
 			for (int64_t x = 0; x != width; ++x) {
@@ -1500,6 +1537,10 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		clock_gettime(CLOCK_MONOTONIC, &end_cluster);
+		LinuxDiffTimeSpec(&delta_cluster, &start_cluster, &end_cluster);
+		LinuxCSumTimeSpec(&etime_cluster, &delta_cluster);
+
 #if DEVBUILD
 		// check the links of the constant y-striped clusters
 		for (int64_t id = 0; id != pixels; ++id) {
@@ -1524,6 +1565,7 @@ int main(int argc, char *argv[])
 #endif
 
 		if (clno > 2) {
+			clock_gettime(CLOCK_MONOTONIC, &start_merge);
 			for (int64_t i = 0; i != (clno - 1); ++i) {
 				int64_t const ii = cl[i];
 				struct cluster *curr = &clusters[ii];
@@ -1650,9 +1692,14 @@ int main(int argc, char *argv[])
 				}
 			}
 
+			clock_gettime(CLOCK_MONOTONIC, &end_merge);
+			LinuxDiffTimeSpec(&delta_merge, &start_merge, &end_merge);
+			LinuxCSumTimeSpec(&etime_merge, &delta_merge);
+			++mergeno;
 
 			if (-1 != id_max) {
 				// TODO: instead of using the `next` data member for traversal you can confidently access them directly based on the cluster size for CPU cache performance (note that here you are accessing them in reverse order by starting at last node `node` data member)
+				clock_gettime(CLOCK_MONOTONIC, &start_backbuffer);
 				data = (typeof(data)) (((char*) base) + offset_frame);
 				memset(data, 0, bytes_per_pixel * width * height);
 				int32_t *frame = (typeof(frame)) data;
@@ -1699,7 +1746,13 @@ int main(int argc, char *argv[])
 					}
 					iter = &clusters[iter->next];
 				}
+				clock_gettime(CLOCK_MONOTONIC, &end_backbuffer);
+				LinuxDiffTimeSpec(&delta_backbuffer, &start_backbuffer, &end_backbuffer);
+				LinuxCSumTimeSpec(&etime_backbuffer, &delta_backbuffer);
+				++backbufferno;
+
 				// TODO: consider using shared-memory after filtering out the game window events from the event-loop
+				clock_gettime(CLOCK_MONOTONIC, &start_putimage);
 				XClearWindow(display, OutputWindow);
 				XPutImage(
 						display,
@@ -1714,6 +1767,9 @@ int main(int argc, char *argv[])
 						(c->y_max - c->y_min)
 					 );
 				XFlush(display);
+				clock_gettime(CLOCK_MONOTONIC, &end_putimage);
+				LinuxDiffTimeSpec(&delta_putimage, &start_putimage, &end_putimage);
+				LinuxCSumTimeSpec(&etime_putimage, &delta_putimage);
 			}
 			else {
 				XClearWindow(display, OutputWindow);
@@ -1726,23 +1782,50 @@ int main(int argc, char *argv[])
 		}
 
 		if (frameno & 256) {
+			// NOTE: guards against displaying infinity on the console
+			mergeno = (!mergeno)? 1 : mergeno;
+			backbufferno = (!backbufferno)? 1 : backbufferno;
+			float invmergeno = 1.0f / ((float) mergeno);
+			float invbackbufferno = 1.0f / ((float) backbufferno);
 			frameno = 0;
+			mergeno = 0;
+			backbufferno = 0;
+			float invsample = 1.0f / 256.0f;
 			// NOTE: elapsed time has data up to the previous frame so 255
-			float sec = etime.tv_sec + 1.0e-9 * etime.tv_nsec;
+			float sec = etime_frame.tv_sec + 1.0e-9 * etime_frame.tv_nsec;
+			float ms_frame = (1.0f / 255.0f) * (1.0e+3 * sec);
+			float ms_getimage = invsample * (1.0e+3 * etime_getimage.tv_sec + 1.0e-6 * etime_getimage.tv_nsec);
+			float ms_init = invsample * (1.0e+3 * etime_init.tv_sec + 1.0e-6 * etime_init.tv_nsec);
+			float ms_cluster = invsample * (1.0e+3 * etime_cluster.tv_sec + 1.0e-6 * etime_cluster.tv_nsec);
+			float ms_merge = invmergeno * (1.0e+3 * etime_merge.tv_sec + 1.0e-6 * etime_merge.tv_nsec);
+			float ms_backbuffer = invbackbufferno * (1.0e+3 * etime_backbuffer.tv_sec + 1.0e-6 * etime_backbuffer.tv_nsec);
+			float ms_putimage = invbackbufferno * (1.0e+3 * etime_putimage.tv_sec + 1.0e-6 * etime_putimage.tv_nsec);
 			float FPSAvg = 255.0f / sec;
-			etime.tv_sec = 0;
-			etime.tv_nsec = 0;
-			fprintf(stdout, "FPS: %.1f\n", FPSAvg);
+			etime_frame.tv_sec = 0;
+			etime_frame.tv_nsec = 0;
+			etime_getimage.tv_sec = 0;
+			etime_getimage.tv_nsec = 0;
+			etime_init.tv_sec = 0;
+			etime_init.tv_nsec = 0;
+			etime_cluster.tv_sec = 0;
+			etime_cluster.tv_nsec = 0;
+			etime_merge.tv_sec = 0;
+			etime_merge.tv_nsec = 0;
+			etime_backbuffer.tv_sec = 0;
+			etime_backbuffer.tv_nsec = 0;
+			etime_putimage.tv_sec = 0;
+			etime_putimage.tv_nsec = 0;
+			fprintf(stdout, "FPS: %.1f XShmGetImage (ms): %.1f Init (ms): %.1f Clustering (ms): %.1f Merging (ms): %.1f Backbuffer (ms): %.1f XPutImage (ms) %.1f Frame (ms): %.1f\n", FPSAvg, ms_getimage, ms_init, ms_cluster, ms_merge, ms_backbuffer, ms_putimage, ms_frame);
 		}
 		else {
 			++frameno;
 		}
-		LinuxSetDelayTime(&sleep, &start, &target);
-		LinuxDelay(CLOCK_MONOTONIC, &sleep);
+		LinuxSetDelayTime(&sleep_frame, &start_frame, &target_frame);
+		LinuxDelay(CLOCK_MONOTONIC, &sleep_frame);
 		// NOTE: we are assuming that this timing computations are inexpensive
-		clock_gettime(CLOCK_MONOTONIC, &end);
-		LinuxDiffTimeSpec(&delta, &start, &end);
-		LinuxCSumTimeSpec(&etime, &delta);
+		clock_gettime(CLOCK_MONOTONIC, &end_frame);
+		LinuxDiffTimeSpec(&delta_frame, &start_frame, &end_frame);
+		LinuxCSumTimeSpec(&etime_frame, &delta_frame);
 	}
 
 	// NOTE: nullifies the Ximage data member to prevent XDestroyImage from trying to free a memory address that's not on the heap
