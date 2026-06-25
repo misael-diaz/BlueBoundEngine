@@ -58,6 +58,9 @@ Have succeeded in tracking the player real-time, the engine does not crash, does
 
 [![ImprovedEngine](https://img.youtube.com/vi/Z15WNpSjAsY/hqdefault.jpg)](https://youtu.be/Z15WNpSjAsY)
 
+-**profiling**: profiling the engine loop demonstrated that the bottleneck happens during the initialization of the `struct cluster` data structure. For that reason the size of this structure has been halved. The other larger bottleneck was the zeroing of the entire memory map, since we don't really need to do that the time spent on initialization has been reduced significantly (nearly 4x improvement). The video below shows the leaner version of the engine hitting the target framerate of 30 FPS.
+[![LeanerEngine](https://img.youtube.com/vi/UjOuaewoW9k/hqdefault.jpg)](https://youtu.be/UjOuaewoW9k)
+
 ## Build
 
 To obtain a development build use the following command-line string:
