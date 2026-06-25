@@ -42,25 +42,25 @@ typedef char unsigned byte_t;
 typedef int64_t CID;
 
 extern "C" struct cluster {
-	int64_t mask;
-	int64_t root;
-	int64_t node;
-	int64_t prev;
-	int64_t next;
-	int64_t size;
-	int64_t super;
-	int64_t total;
-	int64_t id;
-	int64_t x;
-	int64_t y;
-	int64_t x_min;
-	int64_t x_max;
-	int64_t y_min;
-	int64_t y_max;
-	int64_t _pad[1];
+	int32_t root;
+	int32_t node;
+	int32_t prev;
+	int32_t next;
+	int32_t size;
+	int32_t super;
+	int32_t total;
+	int32_t id;
+	int32_t mask;
+	int32_t x;
+	int32_t y;
+	int32_t x_min;
+	int32_t x_max;
+	int32_t y_min;
+	int32_t y_max;
+	int32_t _pad[1];
 };
 
-static_assert(128 == sizeof(struct cluster));
+static_assert(64 == sizeof(struct cluster));
 
 extern "C" void LinuxSetTimeSpec(
 	struct timespec * const clock_time,
