@@ -1699,7 +1699,6 @@ int main(int argc, char *argv[])
 			++mergeno;
 
 			if (-1 != id_max) {
-				// TODO: instead of using the `next` data member for traversal you can confidently access them directly based on the cluster size for CPU cache performance (note that here you are accessing them in reverse order by starting at last node `node` data member)
 				clock_gettime(CLOCK_MONOTONIC, &start_backbuffer);
 				data = (typeof(data)) (((char*) base) + offset_frame);
 				memset(data, 0, bytes_per_pixel * width * height);
