@@ -3,7 +3,7 @@ Implements a deterministic, data-centric, Computer Vision Engine. Currently the 
 
 This is the CV engine for a local Python C/C++ interoperability tech talk.
 
-**Development Status**: Maintained until the Python interoperable engine is finished. Consider this engine to be the pure C/C++ implementation. I do not forsee adding new features to it, the engine meets the required 30 FPS performance target for the talk. It can still be improved in terms of performance but there are other projects (Linux drivers and game engine development) that I would love to start working on them as soon as possible.
+**Development Status**: Maintained until the Python interoperable [engine](https://github.com/misael-diaz/ComputerVisionEngine) is finished. Consider this engine to be the pure C/C++ implementation. I do not forsee adding new features to it, the engine meets the required 30 FPS performance target for the talk. It can still be improved in terms of performance but there are other projects (Linux drivers and game engine development) that I would love to start working on them as soon as possible.
 
 ### Backstory and Motivation
 
