@@ -1,7 +1,9 @@
 # BlueBoundEngine
 Implements a deterministic, data-centric, Computer Vision Engine. Currently the engine is applied for the Real-Time Detection of Sonic The Hedgehog Retro Games.
 
-**Development Status**: Under active development, currently writing the code to render the isolated target (sonic) on a separate [X11 client window](https://dev.to/misaeldiaz/handmade-hero-a-systems-programming-odyssey-26j5).
+This is the CV engine for a local Python C/C++ interoperability tech talk.
+
+**Development Status**: Maintained until the Python interoperable engine is finished. Consider this engine to be the pure C/C++ implementation. I do not forsee adding new features to it, the engine meets the required 30 FPS performance target for the talk. It can still be improved in terms of performance but there are other projects (Linux drivers and game engine development) that I would love to start working on them as soon as possible.
 
 ### Backstory and Motivation
 
