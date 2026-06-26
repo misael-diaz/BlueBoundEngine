@@ -457,7 +457,6 @@ extern "C" void MergeSuperClusters(
 		right = super;
 	}
 
-	// FIXME: assert that the cluster to be linked satisfies the id-ordering
 	int64_t ref_y = left->y;
 	if (left->y < right->y) {
 		while (left->y < right->y) {
