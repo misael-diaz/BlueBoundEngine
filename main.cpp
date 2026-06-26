@@ -1815,7 +1815,7 @@ int main(int argc, char *argv[])
 			etime_backbuffer.tv_nsec = 0;
 			etime_putimage.tv_sec = 0;
 			etime_putimage.tv_nsec = 0;
-			fprintf(stdout, "FPS: %.1f XShmGetImage (ms): %.1f Init (ms): %.1f Clustering (ms): %.1f Merging (ms): %.1f Backbuffer (ms): %.1f XPutImage (ms) %.1f Frame (ms): %.1f\n", FPSAvg, ms_getimage, ms_init, ms_cluster, ms_merge, ms_backbuffer, ms_putimage, ms_frame);
+			fprintf(stdout, "\nFPS: %.1f\nXShmGetImage (ms): %.1f\nInit (ms): %.1f\nClustering (ms): %.1f\nMerging (ms): %.1f\nBackbuffer (ms): %.1f\nXPutImage (ms) %.1f\nFrame (ms): %.1f\n", FPSAvg, ms_getimage, ms_init, ms_cluster, ms_merge, ms_backbuffer, ms_putimage, ms_frame);
 		}
 		else {
 			++frameno;
