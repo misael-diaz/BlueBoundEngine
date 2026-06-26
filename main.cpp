@@ -62,7 +62,7 @@ extern "C" struct cluster {
 	int32_t x_max;
 	int32_t y_min;
 	int32_t y_max;
-	int32_t _pad[1];
+	int32_t __pad;
 };
 
 static_assert(64 == sizeof(struct cluster));
