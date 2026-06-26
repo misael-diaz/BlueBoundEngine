@@ -420,6 +420,7 @@ extern "C" void MergeSuperClusters(
 		id_merge = super->super;
 	}
 
+#if DEVBUILD
 	struct cluster * const ref_super = &clusters[id_super];
 	struct cluster * const ref_merge = &clusters[id_merge];
 	Assert(ref_super->prev == ref_super->id);
@@ -443,6 +444,7 @@ extern "C" void MergeSuperClusters(
 
 	// while-loops yield the count of the linked-clusters excluding the heads
 	int64_t const count_total = 2 + count;
+#endif
 
 	super = &clusters[id_super];
 	merge = &clusters[id_merge];
@@ -478,7 +480,7 @@ extern "C" void MergeSuperClusters(
 	Assert(left->y == right->y);
 
 	if (right->x < left->x) {
-		iter = left;
+		struct cluster *iter = left;
 		left = right;
 		right = iter;
 	}
