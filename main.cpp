@@ -1751,7 +1751,6 @@ int main(int argc, char *argv[])
 				LinuxCSumTimeSpec(&etime_backbuffer, &delta_backbuffer);
 				++backbufferno;
 
-				// TODO: consider using shared-memory after filtering out the game window events from the event-loop
 				clock_gettime(CLOCK_MONOTONIC, &start_putimage);
 				XClearWindow(display, OutputWindow);
 				XPutImage(
