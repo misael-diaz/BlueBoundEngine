@@ -1,6 +1,15 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+
+/*
+
+Copyright (c) 2026 Misael Díaz-Maldonado
+This source file is released under the MIT License.
+See LICENSE file in the project root for the full license information.
+
+*/
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -27,7 +36,6 @@
 
 #define BLUE_FPS_TARGET 30.0f
 #define BLUE_MASK_SONIC (1L << 0)
-// TODO: add MIT License notice at the head of the source code
 // TODO: work on filtering out the events from the game in the event-loop (note the event loop as is written only looks for events it does not discriminate by the window ID and so we are technically waiting for all the events to clear out before we do our work).
 // TODO: bound sonic at a fixed framerate
 // TODO: consider working with a packed RGB parameter instead
