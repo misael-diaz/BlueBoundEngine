@@ -44,7 +44,7 @@ See LICENSE file in the project root for the full license information.
 // Xlib's shared-memory extension: https://xorg.freedesktop.org/archive/X11R7.7/doc/xextproto/shm.html
 
 typedef char unsigned byte_t;
-typedef int64_t CID;
+typedef int32_t CID;
 
 extern "C" struct cluster {
 	int32_t root;
