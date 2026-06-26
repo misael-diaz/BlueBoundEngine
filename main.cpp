@@ -1141,7 +1141,6 @@ int main(int argc, char *argv[])
 
 	XSetWindowAttributes OutputWindowAttributes = {};
 	OutputWindowAttributes.background_pixel = BlackPixelOfScreen(screen);
-	// TODO: drop StructureNotifyMask we are not going to handle those since we are fixing the dimensions of the engine
 	OutputWindowAttributes.event_mask = (
 		ExposureMask |
 //		StructureNotifyMask |
