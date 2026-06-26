@@ -1437,7 +1437,6 @@ int main(int argc, char *argv[])
 			}
 			break;
 			default: {
-				 // TODO: add Assert(1) at least to have something here
 				 Assert(0);
 			}
 			}
