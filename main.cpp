@@ -1785,6 +1785,7 @@ int main(int argc, char *argv[])
 			// NOTE: guards against displaying infinity on the console
 			mergeno = (!mergeno)? 1 : mergeno;
 			backbufferno = (!backbufferno)? 1 : backbufferno;
+			float invframeno = (1.0f / 255.0f);
 			float invmergeno = 1.0f / ((float) mergeno);
 			float invbackbufferno = 1.0f / ((float) backbufferno);
 			frameno = 0;
@@ -1793,7 +1794,7 @@ int main(int argc, char *argv[])
 			float invsample = 1.0f / 256.0f;
 			// NOTE: elapsed time has data up to the previous frame so 255
 			float sec = etime_frame.tv_sec + 1.0e-9 * etime_frame.tv_nsec;
-			float ms_frame = (1.0f / 255.0f) * (1.0e+3 * sec);
+			float ms_frame = invframeno * (1.0e+3 * sec);
 			float ms_getimage = invsample * (1.0e+3 * etime_getimage.tv_sec + 1.0e-6 * etime_getimage.tv_nsec);
 			float ms_init = invsample * (1.0e+3 * etime_init.tv_sec + 1.0e-6 * etime_init.tv_nsec);
 			float ms_cluster = invsample * (1.0e+3 * etime_cluster.tv_sec + 1.0e-6 * etime_cluster.tv_nsec);
