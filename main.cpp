@@ -1381,10 +1381,8 @@ int main(int argc, char *argv[])
 	int64_t backbufferno = 0;
 	while (1) {
 		clock_gettime(CLOCK_MONOTONIC, &start_frame);
-		// TODO: consider using XCheckWindowEvent for performance because here you are checking all events including those of the game which you do not intend to process
 		if (XCheckTypedWindowEvent(display, OutputWindow, KeyPress, &ev)) {
 			switch (ev.type) {
-			// TODO: add Assert(0) because we are not doing this anymore so that we can use the mmap for sharing memory with the XServer for both the game window framebuffer and the output framebuffer of the engine
 			case ConfigureNotify: {
 				Assert(0);
 				if (
